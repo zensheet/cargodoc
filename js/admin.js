@@ -31,12 +31,34 @@ async function createUser(e) {
 
   if (error) {
     status.style.color = 'var(--danger)';
-    status.textContent = 'Error: ' + error.message;
+    status.textContent = 'Error: ' + await extractFunctionError(error);
+    return;
+  }
+  if (data?.warning) {
+    status.style.color = 'var(--warning-border)';
+    status.textContent = '⚠️ ' + data.warning;
+    await loadUsers();
     return;
   }
   status.style.color = '#166534';
   status.textContent = '✅ User created.';
+  document.getElementById('nu-email').value = '';
+  document.getElementById('nu-pass').value = '';
+  document.getElementById('nu-name').value = '';
   await loadUsers();
+}
+
+// supabase-js v2: kalau Edge Function balas status non-2xx, `error.message`
+// cuma teks generik ("Edge Function returned a non-2xx status code").
+// Pesan asli (mis. "Password must be at least 6 characters.") ada di body
+// response, diakses lewat `error.context` (objek Response). Fungsi ini
+// coba baca body itu; kalau gagal, fallback ke error.message biasa.
+async function extractFunctionError(error) {
+  try {
+    const body = await error.context.json();
+    if (body?.error) return body.error;
+  } catch (_) { /* context bukan JSON / tidak ada — pakai fallback */ }
+  return error.message || 'Unknown error.';
 }
 
 // ---------- LOAD USERS ----------

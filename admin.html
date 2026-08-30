@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin — Invoice Shipping Generator</title>
+<link rel="stylesheet" href="css/app.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+  <header class="app-header">
+    <div class="brand"><a href="/app.html" style="text-decoration:none;color:inherit;">📦 ISG</a> / Admin</div>
+    <div class="user-info">
+      <span id="user-name"></span>
+      <a href="/app.html" class="btn btn-secondary btn-sm">Back to App</a>
+      <button class="btn btn-secondary btn-sm" onclick="logout()">Logout</button>
+    </div>
+  </header>
+
+  <main class="app-main">
+
+    <section style="margin-bottom:24px;">
+      <h2>User Management</h2>
+      <p style="color:var(--text-muted);">Buat akun baru, kunci/buka akun, dan atur akses fitur per user.</p>
+    </section>
+
+    <!-- ---------- CREATE USER ---------- -->
+    <div class="feature-card" style="max-width:520px; margin-bottom:28px;">
+      <h3>+ Create New User</h3>
+      <form onsubmit="createUser(event)">
+        <label for="nu-name">Full Name</label>
+        <input id="nu-name" type="text" placeholder="Nama lengkap" required>
+
+        <label for="nu-email">Email</label>
+        <input id="nu-email" type="email" placeholder="user@email.com" required>
+
+        <label for="nu-pass">Password</label>
+        <input id="nu-pass" type="password" placeholder="Minimal 6 karakter" minlength="6" required>
+
+        <label for="nu-role">Role</label>
+        <select id="nu-role">
+          <option value="customer">Customer</option>
+          <option value="developer">Developer</option>
+        </select>
+
+        <button type="submit" class="btn btn-primary btn-block">Create User</button>
+        <p id="nu-status" style="margin-top:10px; font-size:13px;"></p>
+      </form>
+    </div>
+
+    <!-- ---------- USERS TABLE ---------- -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+      <h2>All Users</h2>
+    </div>
+
+    <div style="overflow-x:auto;">
+      <table id="users-table" class="data-table">
+        <thead>
+          <tr>
+            <th>Email</th>
+            <th>Name</th>
+            <th>Role</th>
+            <th>Status</th>
+            <th>Features</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- diisi oleh admin.js -->
+        </tbody>
+      </table>
+    </div>
+
+  </main>
+
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/guard.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>
