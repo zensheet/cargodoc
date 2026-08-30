@@ -156,6 +156,7 @@ async function downloadInvoice(id) {
   if (!inv) return alert('Invoice not found.');
 
   const branding = await getBranding(); // js/branding.js
+  const watermark = accountNeedsWatermark(window.APP_SESSION); // PRD §74
   await generateInvoicePDF({
     invoice: inv,
     shipper: {
@@ -170,7 +171,11 @@ async function downloadInvoice(id) {
     },
     items: items || [],
     branding,
+    watermark,
   });
+  if (watermark) {
+    alert('⏳ Your account is pending activation — this PDF still has a watermark. It will be removed once the administrator activates your account.');
+  }
 }
 
 // ---------- DUPLICATE (PRD §26) ----------

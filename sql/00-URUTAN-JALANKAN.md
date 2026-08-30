@@ -45,6 +45,22 @@ sebelumnya (banyak pakai `references` / `ALTER TABLE ... ADD COLUMN`).
    (`packinglist.js`/`pdf.js`) tapi belum pernah dibuat di SQL manapun, plus
    kolom opsional Bill To / Ship To di `invoices` & `packing_lists`.
 
+9. **`13-self-signup-guest-mode.sql`**
+   Update `handle_new_user()`: self-signup (bukan admin-created) otomatis
+   dapat feature `invoice` + `packing_list` ON. Butuh `handle_new_user()`
+   sudah ada (dari langkah 2) dan Edge Function `admin-create-user` sudah
+   di-deploy (menandai akun admin-created via `app_metadata`).
+
+10. **`14-account-activation-pending-status.sql`**
+    PRD §74 (Account Activation / Payment Gate): tambah status akun
+    `pending` di `profiles.status`, self-signup sekarang mulai dari
+    `pending` (bukan langsung `active`), dan RLS insert `invoices`/
+    `packing_lists` dipindah pakai `is_account_usable()` (cuma nolak
+    `locked`) supaya akun pending tetap bisa menyimpan dokumen — PDF-nya
+    saja yang tetap watermark sampai admin klik "Activate" di
+    `admin.html`. Butuh langkah 9 sudah dijalankan (meng-`replace`
+    `handle_new_user()` yang sama).
+
 ---
 
 Catatan: tabel `customers` dan `suppliers` yang sempat ada di draft awal

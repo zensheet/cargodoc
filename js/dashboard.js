@@ -28,6 +28,13 @@ const FEATURE_CATALOG = [
   document.getElementById('welcome-name').textContent =
     session.profile.full_name || session.profile.email;
 
+  // PRD §74: kasih tau customer kalau akunnya masih 'pending' (self-signup,
+  // belum diaktivasi admin) -- dia tetap bisa pakai app, cuma PDF-nya
+  // masih watermark.
+  if (!isDev && session.profile.status === 'pending') {
+    document.getElementById('pending-banner').hidden = false;
+  }
+
   const grid = document.getElementById('feature-grid');
   grid.innerHTML = '';
 

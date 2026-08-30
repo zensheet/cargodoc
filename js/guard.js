@@ -97,3 +97,23 @@ async function requireFeatureOrGuest(featureKey) {
 
   return { allowed, session, guest: false };
 }
+
+/**
+ * PRD §74 (Account Activation / Payment Gate).
+ * PDF final TANPA watermark hanya untuk akun yang statusnya persis
+ * 'active' (admin-created langsung aktif, atau self-signup yang sudah
+ * di-klik "Activate" oleh admin setelah verifikasi pembayaran).
+ *
+ *  - Guest (belum login sama sekali)        -> selalu watermark.
+ *  - Developer                              -> tidak pernah watermark.
+ *  - Customer status 'pending' atau 'locked' -> watermark.
+ *    (Locked sebenarnya sudah tidak bisa login sama sekali -- lihat
+ *    getSession() -- tapi tetap dijaga di sini kalau-kalau dipanggil
+ *    dari state APP_SESSION yang stale.)
+ *  - Customer status 'active'               -> tidak watermark.
+ */
+function accountNeedsWatermark(session) {
+  if (!session) return true;
+  if (session.profile.role === 'developer') return false;
+  return session.profile.status !== 'active';
+}

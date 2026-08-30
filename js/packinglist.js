@@ -19,6 +19,10 @@ let IS_GUEST = false; // true = belum login (PRD §73 guest mode)
     renderGuestHeader(); // js/guest-auth.js
   } else {
     document.getElementById('user-name').textContent = session.profile.email;
+    // PRD §74: customer sudah login tapi akunnya masih 'pending'
+    if (session.profile.status === 'pending') {
+      document.getElementById('pending-warning').hidden = false;
+    }
   }
 
   EDIT_PL_ID = new URLSearchParams(location.search).get('id');
@@ -484,8 +488,13 @@ async function saveAndDownload() {
     guestAuthGate(async () => {
       const saved = await persistPackingList(data, 'final');
       const branding = await getBranding();
-      await generatePackingListPDF({ packing_list: saved, ...data, branding }); // asli, tanpa watermark
-      alert('✅ Account created & packing list saved. PDF downloaded.');
+      // PRD §74: baru signup -> status masih 'pending', jadi PDF-nya
+      // tetap watermark sampai admin klik "Activate".
+      const watermark = accountNeedsWatermark(window.APP_SESSION);
+      await generatePackingListPDF({ packing_list: saved, ...data, branding, watermark });
+      alert(watermark
+        ? '✅ Account created & packing list saved.\n\nYour PDF still has a watermark — it will be removed once the administrator activates your account.'
+        : '✅ Account created & packing list saved. PDF downloaded.');
       location.href = '/packinglist-list.html';
     });
     return;
@@ -496,8 +505,10 @@ async function saveAndDownload() {
   try {
     const saved = await persistPackingList(data, 'final');
     const branding = await getBranding(); // js/branding.js
-    await generatePackingListPDF({ packing_list: saved, ...data, branding });
-    alert(EDIT_PL_ID ? '✅ Packing list updated & PDF downloaded.' : '✅ Packing list saved & PDF downloaded.');
+    const watermark = accountNeedsWatermark(window.APP_SESSION); // PRD §74
+    await generatePackingListPDF({ packing_list: saved, ...data, branding, watermark });
+    alert((EDIT_PL_ID ? '✅ Packing list updated & PDF downloaded.' : '✅ Packing list saved & PDF downloaded.')
+      + (watermark ? '\n\n⏳ Your account is pending activation — the PDF still has a watermark.' : ''));
     location.href = '/packinglist-list.html';
   } catch (e) {
     alert(e.message); btn.disabled = false;

@@ -1781,6 +1781,33 @@ PDF
 
 ---
 
+## PHASE 10 — ACCOUNT ACTIVATION (MANUAL PAYMENT GATE)
+
+- Status akun baru: `pending`, di antara `active` dan `locked`
+- Self-signup (guest -> create account, lihat §73) sekarang mulai dari
+  `pending`, bukan langsung `active` — admin-created tetap langsung
+  `active` seperti sebelumnya
+- Akun `pending` tetap bisa isi, save, dan edit Invoice/Packing List
+  (feature `invoice`/`packing_list` tetap auto-ON seperti §73) — cuma PDF
+  hasil downloadnya tetap watermark
+- PDF final tanpa watermark HANYA untuk akun berstatus `active`
+- Banner "pending activation" ditampilkan di dashboard (`app.html`) dan di
+  halaman `invoice.html`/`packinglist.html` untuk customer yang sudah
+  login tapi masih `pending`
+- Admin Panel (`admin.html`): tombol **Activate** pada akun `pending`
+  (di-klik developer setelah verifikasi pembayaran/kontak manual) — set
+  status jadi `active`; tombol **Lock** tetap tersedia untuk menolak
+- Flow yang didukung:
+  ```
+  Guest -> isi Invoice/Packing List -> preview PDF watermark
+  -> Create Account -> status = PENDING
+  -> user bayar / hubungi admin -> admin cek pembayaran
+  -> admin klik "Activate" -> status = ACTIVE
+  -> PDF final tanpa watermark
+  ```
+
+---
+
 # 68. MVP SUCCESS CRITERIA
 
 MVP dianggap berhasil jika:
@@ -1825,6 +1852,10 @@ MVP dianggap berhasil jika:
 38. Draft guest otomatis tersimpan ke account baru setelah signup, tanpa data hilang.
 39. Self-signup account otomatis mendapat feature `invoice` + `packing_list` aktif.
 40. Admin-created account tetap default feature OFF (tidak terpengaruh perubahan self-signup).
+41. Self-signup account berstatus `pending` sampai admin meng-aktivasi, bukan langsung `active`.
+42. Akun `pending` tetap dapat membuat & menyimpan Invoice/Packing List, tapi PDF-nya tetap watermark.
+43. Admin dapat meng-klik "Activate" pada akun `pending` untuk mengubah statusnya jadi `active`.
+44. Setelah diaktivasi, PDF yang di-download (baik baru maupun dari history) tidak lagi watermark.
 
 ---
 

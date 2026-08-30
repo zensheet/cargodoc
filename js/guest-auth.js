@@ -25,8 +25,8 @@ function ensureGuestAuthModal() {
     <div class="feature-card" style="max-width:380px; width:92%; margin:10vh auto 0;">
       <h3 id="ga-title">Create a free account</h3>
       <p style="color:var(--text-muted); font-size:13px; margin:6px 0 14px;">
-        Your document is ready. Create a free account to save it and
-        download the real PDF (no watermark).
+        Your document is ready. Create a free account to save it. The
+        watermark-free PDF unlocks once your account is activated.
       </p>
       <div id="ga-error" class="alert alert-error" hidden></div>
       <label for="ga-email">Email</label>

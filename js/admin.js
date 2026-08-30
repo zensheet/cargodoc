@@ -85,18 +85,31 @@ async function loadUsers() {
         ${f.feature_name}</label>`;
     }).join('') + `</div>`;
 
+    const badgeClass = u.status === 'active' ? 'badge-active'
+      : u.status === 'pending' ? 'badge-pending' : 'badge-locked';
+
+    // PRD §74: akun 'pending' (self-signup, belum diverifikasi
+    // pembayarannya) -> tombol "Activate" (set status='active', PDF-nya
+    // langsung lepas watermark) + tetap bisa "Lock" kalau mau ditolak.
+    // Akun 'active' -> "Lock". Akun 'locked' -> "Unlock" (balik ke
+    // 'active', SAMA seperti perilaku sebelumnya).
+    let actions;
+    if (u.status === 'pending') {
+      actions = `<button class="btn btn-primary btn-sm" onclick="setStatus('${u.id}', 'active')">Activate</button>
+        <button class="btn btn-danger btn-sm" onclick="setStatus('${u.id}', 'locked')">Lock</button>`;
+    } else if (u.status === 'active') {
+      actions = `<button class="btn btn-danger btn-sm" onclick="setStatus('${u.id}', 'locked')">Lock</button>`;
+    } else {
+      actions = `<button class="btn btn-primary btn-sm" onclick="setStatus('${u.id}', 'active')">Unlock</button>`;
+    }
+
     tr.innerHTML = `
       <td>${u.email}</td>
       <td>${u.full_name || '—'}</td>
       <td>${u.role}</td>
-      <td><span class="badge ${u.status === 'active' ? 'badge-active' : 'badge-locked'}">
-        ${u.status}</span></td>
+      <td><span class="badge ${badgeClass}">${u.status}</span></td>
       <td>${badges}</td>
-      <td>
-        ${u.status === 'active'
-          ? `<button class="btn btn-danger btn-sm" onclick="setLock('${u.id}', true)">Lock</button>`
-          : `<button class="btn btn-primary btn-sm" onclick="setLock('${u.id}', false)">Unlock</button>`}
-      </td>`;
+      <td>${actions}</td>`;
     tbody.appendChild(tr);
   }
 }
@@ -110,11 +123,15 @@ async function toggleFeature(userId, featureId, enabled) {
   if (error) { alert('Failed: ' + error.message); await loadUsers(); }
 }
 
-// ---------- LOCK / UNLOCK ----------
-async function setLock(userId, lock) {
-  if (lock && !confirm('Lock this account? User will be denied access on next login/page load.')) return;
+// ---------- STATUS: ACTIVATE / LOCK / UNLOCK ----------
+// PRD §74: 'pending' -> 'active' (Activate, biasanya setelah admin
+// verifikasi pembayaran) atau -> 'locked' (tolak). 'active' -> 'locked'.
+// 'locked' -> 'active' (Unlock, perilaku lama).
+async function setStatus(userId, newStatus) {
+  if (newStatus === 'locked'
+      && !confirm('Lock this account? User will be denied access on next login/page load.')) return;
   const { error } = await supabase
-    .from('profiles').update({ status: lock ? 'locked' : 'active' }).eq('id', userId);
+    .from('profiles').update({ status: newStatus }).eq('id', userId);
   if (error) { alert('Failed: ' + error.message); return; }
   await loadUsers();
 }
