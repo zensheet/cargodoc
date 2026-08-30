@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Packing List History — Invoice Shipping Generator</title>
+<link rel="stylesheet" href="css/app.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+
+  <header class="app-header">
+    <div class="brand"><a href="/app.html" style="text-decoration:none;color:inherit;">📦 ISG</a> / Packing List History</div>
+    <div class="user-info">
+      <span id="user-name"></span>
+      <button class="btn btn-secondary btn-sm" onclick="logout()">Logout</button>
+    </div>
+  </header>
+
+  <main class="app-main">
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <h2>Packing List History</h2>
+      <a class="btn btn-primary" href="/packinglist.html">+ New Packing List</a>
+    </div>
+
+    <div style="display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap;">
+      <input id="search" placeholder="🔍 Search PL number / receiver..."
+             style="max-width:280px;" oninput="renderList()">
+      <select id="filter-status" onchange="renderList()" style="max-width:150px;">
+        <option value="">All Status</option>
+        <option value="draft">Draft</option>
+        <option value="final">Final</option>
+      </select>
+    </div>
+
+    <div id="list-container" style="overflow-x:auto;"></div>
+
+  </main>
+
+  <!-- Modal detail -->
+  <div id="modal-overlay" hidden onclick="if(event.target===this) closeModal()"
+       style="position:fixed; inset:0; background:rgba(0,0,0,.5);
+              display:flex; align-items:center; justify-content:center; z-index:100;">
+    <div class="feature-card" style="max-width:760px; width:92%; max-height:85vh; overflow-y:auto;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h3 id="modal-title"></h3>
+        <button class="btn btn-secondary btn-sm" onclick="closeModal()">×</button>
+      </div>
+      <div id="modal-body" style="margin-top:14px; font-size:14px;"></div>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/guard.js"></script>
+  <script src="js/pdf.js"></script>
+  <script src="js/packinglist-list.js"></script>
+</body>
+</html>

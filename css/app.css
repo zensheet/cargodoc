@@ -1,0 +1,168 @@
+/* ============================================
+   Invoice Shipping Generator — Global Styles
+   Clean, professional B2B look
+   ============================================ */
+
+:root {
+  --primary: #1a56db;
+  --primary-dark: #1e429f;
+  --bg: #f4f6f9;
+  --card: #ffffff;
+  --text: #1f2937;
+  --text-muted: #6b7280;
+  --border: #e5e7eb;
+  --danger: #dc2626;
+  --warning-bg: #fef3c7;
+  --warning-border: #f59e0b;
+  --radius: 8px;
+  --shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 12px rgba(0,0,0,.05);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+/* ---------- LOGIN ---------- */
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1a56db 0%, #1e429f 100%);
+  padding: 20px;
+}
+
+.login-card {
+  background: var(--card);
+  border-radius: 12px;
+  box-shadow: 0 20px 50px rgba(0,0,0,.25);
+  padding: 40px;
+  width: 100%;
+  max-width: 400px;
+}
+
+.login-logo { text-align: center; margin-bottom: 28px; }
+
+.logo-box {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 56px; height: 56px; border-radius: 12px;
+  background: var(--primary); color: #fff;
+  font-weight: 700; font-size: 20px; margin-bottom: 12px;
+}
+
+.login-card h1 { font-size: 20px; margin-bottom: 4px; }
+.tagline { color: var(--text-muted); font-size: 14px; }
+
+.login-footer {
+  margin-top: 20px; text-align: center;
+  font-size: 13px; color: var(--text-muted);
+}
+
+/* ---------- FORM ---------- */
+label {
+  display: block; font-size: 13px; font-weight: 600;
+  margin: 14px 0 5px;
+}
+
+input, select, textarea {
+  width: 100%; padding: 10px 12px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  font-size: 15px; font-family: inherit;
+  background: #fff; color: var(--text);
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none; border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(26,86,219,.15);
+}
+
+/* ---------- BUTTONS ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 10px 18px; border: none; border-radius: var(--radius);
+  font-size: 15px; font-weight: 600; cursor: pointer;
+  transition: background .15s;
+  text-decoration: none;
+}
+.btn:disabled { opacity: .6; cursor: not-allowed; }
+
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover:not(:disabled) { background: var(--primary-dark); }
+
+.btn-secondary { background: #fff; color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:hover { background: var(--bg); }
+
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-sm { padding: 6px 12px; font-size: 13px; }
+.btn-block { width: 100%; margin-top: 22px; }
+
+/* ---------- ALERTS ---------- */
+.alert {
+  padding: 12px 14px; border-radius: var(--radius);
+  font-size: 14px; margin-bottom: 14px;
+}
+.alert-error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; white-space: pre-line; }
+.alert-warning { background: var(--warning-bg); border: 1px solid var(--warning-border); color: #92400e; }
+
+/* ---------- APP LAYOUT ---------- */
+.app-header {
+  background: var(--card); border-bottom: 1px solid var(--border);
+  padding: 0 24px; height: 60px;
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 10;
+}
+.app-header .brand { font-weight: 700; color: var(--primary); }
+.app-header .user-info { font-size: 14px; color: var(--text-muted); display: flex; gap: 14px; align-items: center; }
+
+.app-main { max-width: 1100px; margin: 0 auto; padding: 24px; }
+
+/* ---------- DASHBOARD CARDS ---------- */
+.feature-grid {
+  display: grid; gap: 18px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  margin-top: 20px;
+}
+
+.feature-card {
+  background: var(--card); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: 22px;
+  display: flex; flex-direction: column; gap: 8px;
+  border: 1px solid var(--border);
+}
+.feature-card h3 { font-size: 16px; }
+.feature-card p { font-size: 13px; color: var(--text-muted); flex: 1; }
+.feature-card .btn { align-self: flex-start; margin-top: 10px; }
+
+.feature-card.locked { opacity: .55; }
+.feature-card .badge {
+  display: inline-block; font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .5px;
+  padding: 3px 8px; border-radius: 99px;
+}
+.badge-locked { background: #f3f4f6; color: var(--text-muted); }
+.badge-active { background: #dcfce7; color: #166534; }
+
+/* ---------- TABLES ---------- */
+.data-table {
+  width: 100%; border-collapse: collapse;
+  background: var(--card); border-radius: var(--radius);
+  overflow: hidden; box-shadow: var(--shadow);
+}
+.data-table th, .data-table td {
+  padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+.data-table th { background: #f9fafb; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: var(--text-muted); }
+.data-table tr:last-child td { border-bottom: none; }
+
+/* ---------- RESPONSIVE ---------- */
+@media (max-width: 640px) {
+  .app-main { padding: 14px; }
+  .feature-grid { grid-template-columns: 1fr; }
+}

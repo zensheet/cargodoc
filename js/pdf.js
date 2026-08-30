@@ -1,0 +1,211 @@
+// ============================================
+// COMMERCIAL INVOICE PDF
+// ============================================
+
+function generateInvoicePDF(data) {
+  const { invoice: inv, shipper, receiver, items } = data;
+  const pdf = new jspdf.jsPDF({ unit: 'mm', format: 'a4' });
+  const W = 210, M = 14;
+  let y = 0;
+
+  // Header
+  pdf.setFillColor(26, 86, 219);
+  pdf.rect(0, 0, W, 28, 'F');
+  pdf.setTextColor(255);
+  pdf.setFontSize(18); pdf.setFont(undefined, 'bold');
+  pdf.text('COMMERCIAL INVOICE', M, 13);
+  pdf.setFontSize(9); pdf.setFont(undefined, 'normal');
+  pdf.text(`No: ${inv.invoice_number}    Date: ${inv.invoice_date || '—'}`, M, 20);
+  y = 36;
+
+  // Shipper / Receiver (Empty Field Rule)
+  const block = (title, obj, x) => {
+    let yy = y;
+    pdf.setTextColor(60); pdf.setFontSize(8); pdf.setFont(undefined, 'bold');
+    pdf.text(title, x, yy); yy += 5;
+    pdf.setFont(undefined, 'normal'); pdf.setFontSize(9); pdf.setTextColor(0);
+    const LABELS = {
+      company_name: 'Company', pic: 'PIC', address: 'Address',
+      city: 'City', country: 'Country', phone: 'Phone', email: 'Email',
+    };
+    Object.entries(obj).forEach(([key, val]) => {
+      if (val) { pdf.text(`${LABELS[key] || key}: ${val}`, x, yy, { maxWidth: 80 }); yy += 5; }
+    });
+    return yy;
+  };
+  const yL = block('SHIPPER / EXPORTER', shipper, M);
+  const yR = block('RECEIVER / IMPORTER', receiver, W / 2 + 4);
+  y = Math.max(yL, yR) + 6;
+
+  // Shipment details (Empty Field Rule)
+  const details = [
+    ['Shipment Type', inv.shipment_type], ['Currency', inv.currency],
+    ['Payment Terms', inv.payment_terms], ['Incoterms', inv.incoterms],
+    ['PO Number', inv.po_number], ['Reference', inv.reference_number],
+    ['Port of Loading', inv.port_of_loading], ['Port of Discharge', inv.port_of_discharge],
+    ['Final Destination', inv.final_destination], ['Country of Origin', inv.country_of_origin],
+    ['AWB Number', inv.awb_number], ['BL Number', inv.bl_number],
+    ['Container No.', inv.container_number], ['Vessel/Flight', inv.vessel_flight],
+  ].filter(([, v]) => v);
+  if (details.length) {
+    pdf.setFontSize(8);
+    const colW = (W - 2 * M) / 2;
+    details.forEach(([label, val], i) => {
+      const col = i % 2, row = Math.floor(i / 2);
+      const x = M + col * colW;
+      const yy = y + row * 5;
+      pdf.setFont(undefined, 'bold'); pdf.setTextColor(60);
+      pdf.text(`${label}:`, x, yy);
+      pdf.setFont(undefined, 'normal'); pdf.setTextColor(0);
+      pdf.text(String(val), x + 32, yy, { maxWidth: colW - 34 });
+    });
+    y += Math.ceil(details.length / 2) * 5 + 6;
+  }
+
+  // Items table
+  pdf.setFontSize(8); pdf.setFont(undefined, 'bold');
+  const cols = [
+    { label: 'DESCRIPTION', x: M, w: 60 },
+    { label: 'HS CODE', x: M + 62, w: 20 },
+    { label: 'QTY', x: 122, w: 14, align: 'right' },
+    { label: 'UNIT', x: 138, w: 14 },
+    { label: 'UNIT PRICE', x: 156, w: 20, align: 'right' },
+    { label: 'AMOUNT', x: W - M - 20, w: 20, align: 'right' },
+  ];
+  pdf.setFillColor(240, 243, 248);
+  pdf.rect(M, y - 4, W - 2 * M, 7, 'F');
+  cols.forEach(c => pdf.text(c.label, c.x, y, { align: c.align || 'left' }));
+  y += 8;
+
+  pdf.setFont(undefined, 'normal'); pdf.setFontSize(8);
+  (items || []).forEach(it => {
+    if (y > 255) { pdf.addPage(); y = 20; }
+    const vals = [
+      it.description || '', it.hs_code || '',
+      String(it.quantity ?? ''), it.unit || '',
+      it.unit_price != null ? it.unit_price.toFixed(2) : '',
+      it.amount != null ? it.amount.toFixed(2) : '',
+    ];
+    cols.forEach((c, i) => pdf.text(vals[i], c.x, y, { align: c.align || 'left', maxWidth: c.w }));
+    y += 5.5;
+    pdf.setDrawColor(230); pdf.line(M, y - 3, W - M, y - 3);
+  });
+
+  // Totals (Empty Field Rule — only show charges that are non-zero)
+  y += 4;
+  const totalRow = (label, val, bold = false) => {
+    pdf.setFont(undefined, bold ? 'bold' : 'normal');
+    pdf.text(label, W - M - 60, y);
+    pdf.text(String(val), W - M, y, { align: 'right' });
+    y += 6;
+  };
+  pdf.setDrawColor(0);
+  const cur = inv.currency || '';
+  totalRow('Subtotal', `${cur} ${(inv.subtotal ?? 0).toFixed(2)}`);
+  if (inv.freight) totalRow('Freight', `${cur} ${inv.freight.toFixed(2)}`);
+  if (inv.insurance) totalRow('Insurance', `${cur} ${inv.insurance.toFixed(2)}`);
+  if (inv.other_charges) totalRow('Other Charges', `${cur} ${inv.other_charges.toFixed(2)}`);
+  if (inv.discount) totalRow('Discount', `-${cur} ${inv.discount.toFixed(2)}`);
+  totalRow('Grand Total', `${cur} ${(inv.grand_total ?? 0).toFixed(2)}`, true);
+
+  pdf.save(`${inv.invoice_number}.pdf`);
+}
+
+// ============================================
+// PACKING LIST PDF
+// ============================================
+
+function generatePackingListPDF(data) {
+  const { packing_list: pl, shipper, receiver, packages } = data;
+  const pdf = new jspdf.jsPDF({ unit: 'mm', format: 'a4' });
+  const W = 210, M = 14;
+  let y = 0;
+
+  // Header
+  pdf.setFillColor(26, 86, 219);
+  pdf.rect(0, 0, W, 28, 'F');
+  pdf.setTextColor(255);
+  pdf.setFontSize(18); pdf.setFont(undefined, 'bold');
+  pdf.text('PACKING LIST', M, 13);
+  pdf.setFontSize(9); pdf.setFont(undefined, 'normal');
+  pdf.text(`No: ${pl.packing_list_number}    Date: ${pl.packing_list_date || '—'}`, M, 20);
+  y = 36;
+
+  // Shipper / Receiver (Empty Field Rule)
+  const block = (title, obj, x) => {
+    let yy = y;
+    pdf.setTextColor(60); pdf.setFontSize(8); pdf.setFont(undefined, 'bold');
+    pdf.text(title, x, yy); yy += 5;
+    pdf.setFont(undefined, 'normal'); pdf.setFontSize(9); pdf.setTextColor(0);
+    const LABELS = {
+      company_name: 'Company', pic: 'PIC', address: 'Address',
+      city: 'City', country: 'Country', phone: 'Phone', email: 'Email',
+    };
+    Object.entries(obj).forEach(([key, val]) => {
+      if (val) { pdf.text(`${LABELS[key] || key}: ${val}`, x, yy, { maxWidth: 80 }); yy += 5; }
+    });
+    return yy;
+  };
+  const yL = block('SHIPPER / EXPORTER', shipper, M);
+  const yR = block('RECEIVER / IMPORTER', receiver, W / 2 + 4);
+  y = Math.max(yL, yR) + 6;
+
+  // Packages table
+  pdf.setFontSize(8); pdf.setFont(undefined, 'bold');
+  const cols = [
+    { label: 'PKG', x: M, w: 12 },
+    { label: 'DESCRIPTION', x: M + 14, w: 44 },
+    { label: 'QTY', x: 76, w: 14, align: 'right' },
+    { label: 'UNIT', x: 94, w: 14 },
+    { label: 'NET (kg)', x: 116, w: 18, align: 'right' },
+    { label: 'GROSS (kg)', x: 138, w: 20, align: 'right' },
+    { label: 'CBM', x: 162, w: 16, align: 'right' },
+    { label: 'TYPE', x: W - M - 18, w: 18 },
+  ];
+  pdf.setFillColor(240, 243, 248);
+  pdf.rect(M, y - 4, W - 2 * M, 7, 'F');
+  cols.forEach(c => pdf.text(c.label, c.x, y, { align: c.align || 'left' }));
+  y += 8;
+
+  pdf.setFont(undefined, 'normal'); pdf.setFontSize(8);
+  packages.forEach(p => {
+    if (y > 255) { pdf.addPage(); y = 20; }
+    const vals = [
+      p.package_number || '', p.description || '',
+      String(p.quantity ?? ''), p.unit || '',
+      p.net_weight ? p.net_weight.toFixed(2) : '',
+      p.gross_weight ? p.gross_weight.toFixed(2) : '',
+      p.cbm ? p.cbm.toFixed(4) : '',
+      p.package_type || '',
+    ];
+    cols.forEach((c, i) => pdf.text(vals[i], c.x, y, { align: c.align || 'left', maxWidth: c.w }));
+    y += 5.5;
+    pdf.setDrawColor(230); pdf.line(M, y - 3, W - M, y - 3);
+  });
+
+  // Totals
+  y += 4;
+  const totalRow = (label, val, bold = false) => {
+    pdf.setFont(undefined, bold ? 'bold' : 'normal');
+    pdf.text(label, W - M - 60, y);
+    pdf.text(String(val), W - M, y, { align: 'right' });
+    y += 6;
+  };
+  pdf.setDrawColor(0);
+  totalRow('Total Packages', pl.total_packages ?? packages.length);
+  totalRow('Total Quantity', pl.total_quantity ?? 0);
+  if (pl.total_net_weight) totalRow('Total Net Weight', `${pl.total_net_weight.toFixed(2)} kg`);
+  if (pl.total_gross_weight) totalRow('Total Gross Weight', `${pl.total_gross_weight.toFixed(2)} kg`, true);
+  if (pl.total_cbm) totalRow('Total Volume', `${pl.total_cbm.toFixed(4)} CBM`, true);
+
+  // Marks & numbers
+  if (pl.marks_numbers) {
+    y += 6;
+    pdf.setFontSize(8); pdf.setFont(undefined, 'bold'); pdf.setTextColor(60);
+    pdf.text('MARKS & NUMBERS / NOTES', M, y); y += 5;
+    pdf.setFont(undefined, 'normal'); pdf.setTextColor(0);
+    pdf.text(pl.marks_numbers, M, y, { maxWidth: W - 2 * M });
+  }
+
+  pdf.save(`${pl.packing_list_number}.pdf`);
+}
