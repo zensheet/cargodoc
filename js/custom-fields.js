@@ -79,6 +79,20 @@ function renderCustomFieldsUI() {
 
   section.innerHTML = html;
   actions.parentElement.insertBefore(section, actions);
+
+  // Mode edit: prefill nilai dari dokumen yang sedang diedit (lihat
+  // window.EDIT_DOC_CUSTOM_FIELDS, di-set oleh invoice.js/packinglist.js
+  // setelah load data). Disimpan by label saat save (lihat collectCfValues).
+  const existing = window.EDIT_DOC_CUSTOM_FIELDS;
+  if (existing) {
+    CF_DEFS.forEach(d => {
+      const val = existing[d.field_label];
+      if (val === undefined) return;
+      const el = document.getElementById(`cf-${d.field_key}`);
+      if (el) el.value = val;
+      CF_VALUES[d.field_key] = val;
+    });
+  }
 }
 
 function escHtml(s) {

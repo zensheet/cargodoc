@@ -4,7 +4,10 @@
 //   - Bisa dibuat manual ATAU dari invoice (items otomatis terisi)
 //   - CBM dihitung otomatis dari L x W x H (cm)
 //   - Soft validation, bukan blocking
+//   - Edit existing packing list via ?id=<uuid> di URL (PRD §47)
 // ============================================
+
+let EDIT_PL_ID = null; // null = create baru; berisi id = mode edit
 
 (async function initPackingList() {
   const { allowed, session } = await requireFeature('packing_list');
@@ -13,14 +16,91 @@
 
   document.getElementById('user-name').textContent = session.profile.email;
 
-  document.getElementById('f-pl_date').value =
-    new Date().toISOString().slice(0, 10);
+  EDIT_PL_ID = new URLSearchParams(location.search).get('id');
 
-  document.getElementById('f-pl_number').value = await nextPlNumber();
-
-  addPkgRow();
+  // Invoice dropdown harus terisi options-nya DULU sebelum kita coba
+  // set value-nya di loadPackingListForEdit (select butuh <option> yang
+  // matching sudah ada dulu, baru assign .value bisa kepilih).
   await loadInvoiceOptions();
+
+  if (EDIT_PL_ID) {
+    await loadPackingListForEdit(EDIT_PL_ID);
+  } else {
+    document.getElementById('f-pl_date').value =
+      new Date().toISOString().slice(0, 10);
+    document.getElementById('f-pl_number').value = await nextPlNumber();
+    addPkgRow();
+  }
 })();
+
+// ---------- LOAD UNTUK EDIT ----------
+async function loadPackingListForEdit(id) {
+  const { data: pl, error } = await supabase
+    .from('packing_lists').select('*').eq('id', id).single();
+  if (error || !pl) {
+    alert('Packing list not found or you do not have access to it.');
+    location.href = '/packinglist-list.html';
+    return;
+  }
+
+  const { data: packages } = await supabase
+    .from('packing_list_items').select('*').eq('packing_list_id', id).order('created_at');
+
+  const heading = document.querySelector('.app-header .brand');
+  if (heading) heading.innerHTML =
+    `<a href="/app.html" style="text-decoration:none;color:inherit;">📦 ISG</a> / Edit Packing List ${pl.packing_list_number}`;
+  document.getElementById('btn-save').textContent = 'Update & Download PDF';
+  document.getElementById('btn-save-only').textContent = 'Update Draft';
+
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val ?? ''; };
+
+  set('f-pl_number', pl.packing_list_number);
+  set('f-pl_date', pl.packing_list_date);
+  set('f-source_invoice', pl.source_invoice_id || '');
+  set('f-marks', pl.marks_numbers);
+
+  set('f-shipper_name', pl.shipper_name);
+  set('f-shipper_pic', pl.shipper_pic);
+  set('f-shipper_address', pl.shipper_address);
+  set('f-shipper_city', pl.shipper_city);
+  set('f-shipper_country', pl.shipper_country);
+  set('f-shipper_phone', pl.shipper_phone);
+  set('f-shipper_email', pl.shipper_email);
+  set('f-receiver_name', pl.receiver_name);
+  set('f-receiver_pic', pl.receiver_pic);
+  set('f-receiver_address', pl.receiver_address);
+  set('f-receiver_city', pl.receiver_city);
+  set('f-receiver_country', pl.receiver_country);
+  set('f-receiver_phone', pl.receiver_phone);
+  set('f-receiver_email', pl.receiver_email);
+
+  const tbody = document.querySelector('#packages-table tbody');
+  tbody.innerHTML = '';
+  if (packages?.length) {
+    packages.forEach(p => {
+      addPkgRow();
+      const tr = tbody.lastElementChild;
+      tr.querySelector('.p-package_number').value = p.package_number || '';
+      tr.querySelector('.p-description').value = p.description || '';
+      tr.querySelector('.p-quantity').value = p.quantity ?? '';
+      tr.querySelector('.p-unit').value = p.unit || 'PCS';
+      tr.querySelector('.p-net_weight').value = p.net_weight ?? '';
+      tr.querySelector('.p-gross_weight').value = p.gross_weight ?? '';
+      tr.querySelector('.p-length').value = p.length ?? '';
+      tr.querySelector('.p-width').value = p.width ?? '';
+      tr.querySelector('.p-height').value = p.height ?? '';
+      tr.querySelector('.p-cbm').value = p.cbm ?? '';
+      tr.querySelector('.p-package_type').value = p.package_type || 'CARTON';
+    });
+  } else {
+    addPkgRow();
+  }
+
+  window.EDIT_DOC_CUSTOM_FIELDS = pl.custom_fields || null;
+
+  recalcTotals();
+}
+
 
 // ---------- NOMOR PACKING LIST ----------
 async function nextPlNumber() {
@@ -274,9 +354,25 @@ async function persistPackingList(data, status) {
     receiver_email:    data.receiver.email,
   };
 
-  const { data: saved, error } = await supabase
-    .from('packing_lists').insert(pl).select().single();
-  if (error) throw new Error('Save failed: ' + error.message);
+  let saved;
+  if (EDIT_PL_ID) {
+    // ---- MODE EDIT: update row yang sudah ada ----
+    const { data: updated, error } = await supabase
+      .from('packing_lists').update(pl).eq('id', EDIT_PL_ID).select().single();
+    if (error) throw new Error('Update failed: ' + error.message);
+    saved = updated;
+
+    // Packages: hapus semua yang lama, insert ulang dari form
+    const { error: delErr } = await supabase
+      .from('packing_list_items').delete().eq('packing_list_id', EDIT_PL_ID);
+    if (delErr) throw new Error('Failed to update packages: ' + delErr.message);
+  } else {
+    // ---- MODE BARU: insert row baru ----
+    const { data: created, error } = await supabase
+      .from('packing_lists').insert(pl).select().single();
+    if (error) throw new Error('Save failed: ' + error.message);
+    saved = created;
+  }
 
   if (data.packages.length) {
     const { error: pErr } = await supabase
@@ -291,13 +387,14 @@ async function saveOnly() {
   const data = collectPackingList();
   softValidationPl(data);
   const btn = document.getElementById('btn-save-only');
-  btn.disabled = true; btn.textContent = 'Saving...';
+  btn.disabled = true; btn.textContent = EDIT_PL_ID ? 'Updating...' : 'Saving...';
   try {
     await persistPackingList(data, 'draft');
-    alert('✅ Packing list saved as draft.');
+    alert(EDIT_PL_ID ? '✅ Packing list updated.' : '✅ Packing list saved as draft.');
     location.href = '/packinglist-list.html';
   } catch (e) {
-    alert(e.message); btn.disabled = false; btn.textContent = 'Save as Draft';
+    alert(e.message); btn.disabled = false;
+    btn.textContent = EDIT_PL_ID ? 'Update Draft' : 'Save as Draft';
   }
 }
 
@@ -305,13 +402,14 @@ async function saveAndDownload() {
   const data = collectPackingList();
   softValidationPl(data);
   const btn = document.getElementById('btn-save');
-  btn.disabled = true; btn.textContent = 'Saving...';
+  btn.disabled = true; btn.textContent = EDIT_PL_ID ? 'Updating...' : 'Saving...';
   try {
     const saved = await persistPackingList(data, 'final');
     generatePackingListPDF({ packing_list: saved, ...data });
-    alert('✅ Packing list saved & PDF downloaded.');
+    alert(EDIT_PL_ID ? '✅ Packing list updated & PDF downloaded.' : '✅ Packing list saved & PDF downloaded.');
     location.href = '/packinglist-list.html';
   } catch (e) {
-    alert(e.message); btn.disabled = false; btn.textContent = 'Save & Download PDF';
+    alert(e.message); btn.disabled = false;
+    btn.textContent = EDIT_PL_ID ? 'Update & Download PDF' : 'Save & Download PDF';
   }
 }

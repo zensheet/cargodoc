@@ -5,7 +5,10 @@
 //   - Items dinamis, amount & totals terhitung live
 //   - Soft validation (PRD §32): warning, tidak blocking
 //   - Save draft / save final + download PDF
+//   - Edit existing invoice via ?id=<uuid> di URL (PRD §47, MVP #16)
 // ============================================
+
+let EDIT_ID = null; // null = create baru; berisi id = mode edit
 
 (async function initInvoice() {
   // PRD §9: feature gate — UI layer; RLS tetap security utama
@@ -15,17 +18,105 @@
 
   document.getElementById('user-name').textContent = session.profile.email;
 
-  // Default date = hari ini
-  document.getElementById('f-invoice_date').value =
-    new Date().toISOString().slice(0, 10);
+  EDIT_ID = new URLSearchParams(location.search).get('id');
 
-  // Nomor invoice otomatis
-  const numberInput = document.getElementById('f-invoice_number');
-  numberInput.value = await nextInvoiceNumber();
+  if (EDIT_ID) {
+    await loadInvoiceForEdit(EDIT_ID);
+  } else {
+    // Default date = hari ini
+    document.getElementById('f-invoice_date').value =
+      new Date().toISOString().slice(0, 10);
 
-  // Baris item pertama
-  addItemRow();
+    // Nomor invoice otomatis
+    document.getElementById('f-invoice_number').value = await nextInvoiceNumber();
+
+    // Baris item pertama
+    addItemRow();
+  }
 })();
+
+// ---------- LOAD UNTUK EDIT ----------
+async function loadInvoiceForEdit(id) {
+  const { data: inv, error } = await supabase
+    .from('invoices').select('*').eq('id', id).single();
+  if (error || !inv) {
+    alert('Invoice not found or you do not have access to it.');
+    location.href = '/invoice-list.html';
+    return;
+  }
+
+  const { data: items } = await supabase
+    .from('invoice_items').select('*').eq('invoice_id', id).order('created_at');
+
+  // Header halaman & tombol -> jelasin ini mode edit
+  const heading = document.querySelector('.app-header .brand');
+  if (heading) heading.innerHTML =
+    `<a href="/app.html" style="text-decoration:none;color:inherit;">📦 ISG</a> / Edit Invoice ${inv.invoice_number}`;
+  document.getElementById('btn-save').textContent = 'Update & Download PDF';
+  document.getElementById('btn-save-only').textContent = 'Update Draft';
+
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val ?? ''; };
+
+  set('f-shipment_type', inv.shipment_type || 'export');
+  set('f-invoice_number', inv.invoice_number);
+  set('f-invoice_date', inv.invoice_date);
+  set('f-currency', inv.currency || 'USD');
+  set('f-payment_terms', inv.payment_terms);
+  set('f-incoterms', inv.incoterms);
+  set('f-po_number', inv.po_number);
+  set('f-reference_number', inv.reference_number);
+  set('f-port_of_loading', inv.port_of_loading);
+  set('f-port_of_discharge', inv.port_of_discharge);
+  set('f-final_destination', inv.final_destination);
+  set('f-country_of_origin', inv.country_of_origin);
+  set('f-awb_number', inv.awb_number);
+  set('f-bl_number', inv.bl_number);
+  set('f-container_number', inv.container_number);
+  set('f-vessel_flight', inv.vessel_flight);
+  set('f-freight', inv.freight);
+  set('f-insurance', inv.insurance);
+  set('f-other_charges', inv.other_charges);
+  set('f-discount', inv.discount);
+
+  set('f-shipper_name', inv.shipper_name);
+  set('f-shipper_pic', inv.shipper_pic);
+  set('f-shipper_address', inv.shipper_address);
+  set('f-shipper_city', inv.shipper_city);
+  set('f-shipper_country', inv.shipper_country);
+  set('f-shipper_phone', inv.shipper_phone);
+  set('f-shipper_email', inv.shipper_email);
+  set('f-receiver_name', inv.receiver_name);
+  set('f-receiver_pic', inv.receiver_pic);
+  set('f-receiver_address', inv.receiver_address);
+  set('f-receiver_city', inv.receiver_city);
+  set('f-receiver_country', inv.receiver_country);
+  set('f-receiver_phone', inv.receiver_phone);
+  set('f-receiver_email', inv.receiver_email);
+
+  // Items
+  const tbody = document.querySelector('#items-table tbody');
+  tbody.innerHTML = '';
+  if (items?.length) {
+    items.forEach(it => {
+      addItemRow();
+      const tr = tbody.lastElementChild;
+      tr.querySelector('.i-description').value = it.description || '';
+      tr.querySelector('.i-hs_code').value = it.hs_code || '';
+      tr.querySelector('.i-quantity').value = it.quantity ?? '';
+      tr.querySelector('.i-unit').value = it.unit || 'PCS';
+      tr.querySelector('.i-unit_price').value = it.unit_price ?? '';
+      tr.querySelector('.i-amount').value = it.amount ?? '';
+    });
+  } else {
+    addItemRow();
+  }
+
+  // Custom fields (diisi custom-fields.js kalau section-nya sudah ke-render)
+  window.EDIT_DOC_CUSTOM_FIELDS = inv.custom_fields || null;
+
+  recalc();
+}
+
 
 // ---------- NOMOR INVOICE (PRD §30) ----------
 async function nextInvoiceNumber() {
@@ -208,9 +299,26 @@ async function persistInvoice(data, status) {
       || await nextInvoiceNumber(), // mode AUTO -> generate saat save
   };
 
-  const { data: saved, error } = await supabase
-    .from('invoices').insert(inv).select().single();
-  if (error) throw new Error('Save failed: ' + error.message);
+  let saved;
+  if (EDIT_ID) {
+    // ---- MODE EDIT: update row yang sudah ada ----
+    const { data: updated, error } = await supabase
+      .from('invoices').update(inv).eq('id', EDIT_ID).select().single();
+    if (error) throw new Error('Update failed: ' + error.message);
+    saved = updated;
+
+    // Items: cara paling aman & simpel — hapus semua item lama, insert ulang
+    // dari form (item tidak punya id stabil per baris di UI).
+    const { error: delErr } = await supabase
+      .from('invoice_items').delete().eq('invoice_id', EDIT_ID);
+    if (delErr) throw new Error('Failed to update items: ' + delErr.message);
+  } else {
+    // ---- MODE BARU: insert row baru ----
+    const { data: created, error } = await supabase
+      .from('invoices').insert(inv).select().single();
+    if (error) throw new Error('Save failed: ' + error.message);
+    saved = created;
+  }
 
   if (data.items.length) {
     const { error: iErr } = await supabase
@@ -225,13 +333,14 @@ async function saveOnly() {
   const data = collectInvoice();
   softValidation(data); // warning saja, tetap lanjut
   const btn = document.getElementById('btn-save-only');
-  btn.disabled = true; btn.textContent = 'Saving...';
+  btn.disabled = true; btn.textContent = EDIT_ID ? 'Updating...' : 'Saving...';
   try {
     await persistInvoice(data, 'draft');
-    alert('✅ Invoice saved as draft.');
+    alert(EDIT_ID ? '✅ Invoice updated.' : '✅ Invoice saved as draft.');
     location.href = '/invoice-list.html';
   } catch (e) {
-    alert(e.message); btn.disabled = false; btn.textContent = 'Save as Draft';
+    alert(e.message); btn.disabled = false;
+    btn.textContent = EDIT_ID ? 'Update Draft' : 'Save as Draft';
   }
 }
 
@@ -239,13 +348,14 @@ async function saveAndDownload() {
   const data = collectInvoice();
   softValidation(data); // warning saja, tetap lanjut (PRD §32)
   const btn = document.getElementById('btn-save');
-  btn.disabled = true; btn.textContent = 'Saving...';
+  btn.disabled = true; btn.textContent = EDIT_ID ? 'Updating...' : 'Saving...';
   try {
     const saved = await persistInvoice(data, 'final');
     generateInvoicePDF({ ...data, invoice: saved }); // js/pdf.js
-    alert('✅ Invoice saved & PDF downloaded.');
+    alert(EDIT_ID ? '✅ Invoice updated & PDF downloaded.' : '✅ Invoice saved & PDF downloaded.');
     location.href = '/invoice-list.html';
   } catch (e) {
-    alert(e.message); btn.disabled = false; btn.textContent = 'Save & Download PDF';
+    alert(e.message); btn.disabled = false;
+    btn.textContent = EDIT_ID ? 'Update & Download PDF' : 'Save & Download PDF';
   }
 }

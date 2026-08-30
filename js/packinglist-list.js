@@ -68,6 +68,7 @@ function renderList() {
       <td><span class="badge ${pl.status === 'final' ? 'badge-active' : 'badge-locked'}">${esc(pl.status)}</span></td>
       <td style="white-space:nowrap;">
         <button class="btn btn-secondary btn-sm" onclick="viewPl('${pl.id}')">View</button>
+        <a class="btn btn-secondary btn-sm" href="/packinglist.html?id=${pl.id}">Edit</a>
         <button class="btn btn-secondary btn-sm" onclick="downloadPl('${pl.id}')">PDF</button>
         <button class="btn btn-secondary btn-sm" onclick="duplicatePl('${pl.id}')">Duplicate</button>
         <button class="btn btn-danger btn-sm" onclick="deletePl('${pl.id}', '${esc(pl.packing_list_number)}')">Delete</button>
@@ -136,6 +137,7 @@ async function viewPl(id) {
     </div>
     <div style="margin-top:16px; display:flex; gap:10px;">
       <button class="btn btn-primary btn-sm" onclick="downloadPl('${pl.id}')">Download PDF</button>
+      <a class="btn btn-secondary btn-sm" href="/packinglist.html?id=${pl.id}">Edit</a>
       <button class="btn btn-secondary btn-sm" onclick="duplicatePl('${pl.id}')">Duplicate</button>
     </div>`;
 

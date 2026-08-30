@@ -69,6 +69,7 @@ function renderList() {
       <td><span class="badge ${inv.status === 'final' ? 'badge-active' : 'badge-locked'}">${esc(inv.status)}</span></td>
       <td style="white-space:nowrap;">
         <button class="btn btn-secondary btn-sm" onclick="viewInvoice('${inv.id}')">View</button>
+        <a class="btn btn-secondary btn-sm" href="/invoice.html?id=${inv.id}">Edit</a>
         <button class="btn btn-secondary btn-sm" onclick="downloadInvoice('${inv.id}')">PDF</button>
         <button class="btn btn-secondary btn-sm" onclick="duplicateInvoice('${inv.id}')">Duplicate</button>
         <button class="btn btn-danger btn-sm" onclick="deleteInvoice('${inv.id}', '${esc(inv.invoice_number)}')">Delete</button>
@@ -134,6 +135,7 @@ async function viewInvoice(id) {
     </div>
     <div style="margin-top:16px; display:flex; gap:10px;">
       <button class="btn btn-primary btn-sm" onclick="downloadInvoice('${inv.id}')">Download PDF</button>
+      <a class="btn btn-secondary btn-sm" href="/invoice.html?id=${inv.id}">Edit</a>
       <button class="btn btn-secondary btn-sm" onclick="duplicateInvoice('${inv.id}')">Duplicate</button>
     </div>`;
 
