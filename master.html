@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Master Data — Invoice Shipping Generator</title>
+<link rel="stylesheet" href="css/app.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+  <header class="app-header">
+    <div class="brand"><a href="/app.html" style="text-decoration:none;color:inherit;">📦 ISG</a> / Master Data</div>
+    <div class="user-info">
+      <span id="user-name"></span>
+      <button class="btn btn-secondary btn-sm" onclick="logout()">Logout</button>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <h2>Master Data</h2>
+    <p style="color:var(--text-muted); margin:4px 0 16px;">
+      Simpan customer, supplier, produk, dan custom field yang sering dipakai —
+      otomatis tersedia sebagai auto-fill / kolom tambahan di form Invoice & Packing List.
+    </p>
+
+    <!-- Tabs -->
+    <div style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;">
+      <button class="btn btn-primary" id="tab-companies" onclick="switchTab('companies')">Companies</button>
+      <button class="btn btn-secondary" id="tab-products" onclick="switchTab('products')">Products</button>
+      <button class="btn btn-secondary" id="tab-customfields" onclick="switchTab('customfields')">Custom Fields</button>
+    </div>
+
+    <!-- ===== COMPANIES ===== -->
+    <section id="panel-companies">
+      <div class="feature-card" style="max-width:640px; margin-bottom:24px;">
+        <h3 id="co-form-title">Add Company</h3>
+        <input type="hidden" id="co-id">
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:0 16px;">
+          <div>
+            <label>Type</label>
+            <select id="co-type">
+              <option value="customer">Customer</option>
+              <option value="supplier">Supplier</option>
+              <option value="both">Customer & Supplier</option>
+            </select>
+          </div>
+          <div><label>Company Name *</label><input id="co-name" placeholder="PT Maju Jaya"></div>
+          <div><label>PIC</label><input id="co-pic" placeholder="Person in charge"></div>
+          <div><label>Phone</label><input id="co-phone"></div>
+          <div><label>Email</label><input id="co-email" type="email"></div>
+          <div><label>City</label><input id="co-city"></div>
+          <div><label>Country</label><input id="co-country"></div>
+          <div style="grid-column:1 / -1;"><label>Address</label><input id="co-address"></div>
+          <div style="grid-column:1 / -1;"><label>Notes</label><input id="co-notes"></div>
+        </div>
+        <div style="margin-top:14px; display:flex; gap:10px;">
+          <button class="btn btn-primary" onclick="saveCompany(event)">Save Company</button>
+          <button class="btn btn-secondary" onclick="resetCompanyForm()" hidden id="co-cancel">Cancel Edit</button>
+        </div>
+        <div id="co-status" style="margin-top:10px; font-size:14px;"></div>
+      </div>
+
+      <div id="companies-table" style="overflow-x:auto;"></div>
+    </section>
+
+    <!-- ===== PRODUCTS ===== -->
+    <section id="panel-products" hidden>
+      <div class="feature-card" style="max-width:640px; margin-bottom:24px;">
+        <h3 id="pr-form-title">Add Product</h3>
+        <input type="hidden" id="pr-id">
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:0 16px;">
+          <div><label>Product Name *</label><input id="pr-name" placeholder="Widget A"></div>
+          <div><label>HS Code</label><input id="pr-hs" placeholder="e.g. 8471.30"></div>
+          <div><label>Unit</label><input id="pr-unit" value="PCS"></div>
+          <div><label>Default Unit Price</label><input id="pr-price" type="number" step="0.01"></div>
+          <div style="grid-column:1 / -1;"><label>Description</label><input id="pr-desc"></div>
+        </div>
+        <div style="margin-top:14px; display:flex; gap:10px;">
+          <button class="btn btn-primary" onclick="saveProduct(event)">Save Product</button>
+          <button class="btn btn-secondary" onclick="resetProductForm()" hidden id="pr-cancel">Cancel Edit</button>
+        </div>
+        <div id="pr-status" style="margin-top:10px; font-size:14px;"></div>
+      </div>
+
+      <div id="products-table" style="overflow-x:auto;"></div>
+    </section>
+
+    <!-- ===== CUSTOM FIELDS ===== -->
+    <section id="panel-customfields" hidden>
+      <div class="feature-card" style="max-width:640px; margin-bottom:24px;">
+        <h3>Add Custom Field</h3>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:0 16px;">
+          <div><label>Label *</label><input id="cfd-label" placeholder="e.g. Color"></div>
+          <div>
+            <label>Applies To</label>
+            <select id="cfd-applies">
+              <option value="both">Invoice & Packing List</option>
+              <option value="invoice">Invoice only</option>
+              <option value="packing_list">Packing List only</option>
+            </select>
+          </div>
+          <div style="display:flex; align-items:flex-end;">
+            <label style="display:flex; gap:8px; align-items:center; cursor:pointer;">
+              <input type="checkbox" id="cfd-suggested"> Suggested field
+            </label>
+          </div>
+        </div>
+        <div style="margin-top:14px;">
+          <button class="btn btn-primary" onclick="saveFieldDef()">Save Field</button>
+        </div>
+        <div id="cfd-status" style="margin-top:10px; font-size:14px;"></div>
+      </div>
+      <div id="cfd-table" style="overflow-x:auto;"></div>
+    </section>
+  </main>
+
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/guard.js"></script>
+  <script src="js/master.js"></script>
+</body>
+</html>

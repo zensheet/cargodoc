@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Commercial Invoice — Invoice Shipping Generator</title>
+<link rel="stylesheet" href="css/app.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+
+  <header class="app-header">
+    <div class="brand"><a href="/app.html" style="text-decoration:none;color:inherit;">📦 ISG</a> / Commercial Invoice</div>
+    <div class="user-info">
+      <span id="user-name"></span>
+      <button class="btn btn-secondary btn-sm" onclick="logout()">Logout</button>
+    </div>
+  </header>
+
+  <main class="app-main">
+
+    <!-- Soft warning banner (PRD §32: non-blocking) -->
+    <div id="soft-warning" class="alert alert-warning" hidden></div>
+
+    <form id="invoice-form" onsubmit="return false;">
+
+      <!-- ===== BASIC INFO ===== -->
+      <section class="feature-card" style="margin-bottom:20px;">
+        <h3>Invoice Information</h3>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:0 16px;">
+          <div>
+            <label>Shipment Type</label>
+            <select id="f-shipment_type">
+              <option value="export">Export</option>
+              <option value="import">Import</option>
+              <option value="domestic">Dom</option>
+            </select>
+         </div>
+          <div>
+            <label>Invoice Number</label>
+            <div style="display:flex; gap:8px;">
+              <input id="f-invoice_number" readonly>
+              <button class="btn btn-secondary btn-sm" onclick="toggleNumberEdit()" type="button">Edit</button>
+            </div>
+            <small style="color:var(--text-muted);">Auto-generated (INV-{YEAR}-{SEQ})</small>
+          </div>
+          <div>
+            <label>Invoice Date</label>
+            <input id="f-invoice_date" type="date">
+          </div>
+          <div>
+            <label>Currency</label>
+            <select id="f-currency" onchange="recalc()">
+              <option>USD</option>
+              <option>IDR</option>
+              <option>SGD</option>
+              <option>EUR</option>
+              <option>JPY</option>
+              <option>CNY</option>
+              <option>AUD</option>
+              <option>MYR</option>
+            </select>
+          </div>
+          <div>
+            <label>Payment Terms</label>
+            <input id="f-payment_terms" placeholder="e.g. T/T 30 days">
+          </div>
+          <div>
+            <label>Incoterms</label>
+            <select id="f-incoterms">
+              <option value="">—</option>
+              <option>FOB</option><option>CIF</option><option>CFR</option>
+              <option>EXW</option><option>DAP</option><option>DDP</option>
+              <option>FCA</option><option>CPT</option><option>CIP</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== SHIPPER / RECEIVER ===== -->
+      <section class="feature-card" style="margin-bottom:20px;">
+        <h3>Shipper & Receiver</h3>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+          <div>
+            <h4>Shipper (From)</h4>
+            <label>Company Name</label><input id="f-shipper_name">
+            <label>PIC (Person in Charge)</label><input id="f-shipper_pic" placeholder="e.g. John Doe">
+            <label>Address</label><input id="f-shipper_address">
+            <label>City / Country</label>
+            <div style="display:flex; gap:8px;">
+              <input id="f-shipper_city" placeholder="City">
+              <input id="f-shipper_country" placeholder="Country">
+            </div>
+            <label>Phone / Email</label>
+            <div style="display:flex; gap:8px;">
+              <input id="f-shipper_phone" placeholder="Phone">
+              <input id="f-shipper_email" type="email" placeholder="Email">
+            </div>
+          </div>
+          <div>
+            <h4>Receiver (To)</h4>
+            <label>Company Name</label><input id="f-receiver_name">
+            <label>PIC (Person in Charge)</label><input id="f-receiver_pic" placeholder="e.g. Jane Smith">
+            <label>Address</label><input id="f-receiver_address">
+            <label>City / Country</label>
+            <div style="display:flex; gap:8px;">
+              <input id="f-receiver_city" placeholder="City">
+              <input id="f-receiver_country" placeholder="Country">
+            </div>
+            <label>Phone / Email</label>
+            <div style="display:flex; gap:8px;">
+              <input id="f-receiver_phone" placeholder="Phone">
+              <input id="f-receiver_email" type="email" placeholder="Email">
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== ITEMS ===== -->
+      <section class="feature-card" style="margin-bottom:20px;">
+        <h3>Items</h3>
+        <div style="overflow-x:auto;">
+          <table class="data-table" id="items-table">
+            <thead>
+              <tr>
+                <th style="width:32%;">Description</th>
+                <th style="width:12%;">HS Code</th>
+                <th style="width:9%;">Qty</th>
+                <th style="width:9%;">Unit</th>
+                <th style="width:12%;">Unit Price</th>
+                <th style="width:14%;">Amount</th>
+                <th style="width:36px;"></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <button class="btn btn-secondary btn-sm" style="margin-top:10px;" onclick="addItemRow()" type="button">
+          + Add Item
+        </button>
+
+        <div style="margin-top:16px; text-align:right; font-size:15px;">
+          <p>Subtotal: <span id="t-currency">USD</span> <strong id="t-subtotal">0.00</strong></p>
+        </div>
+      </section>
+
+      <!-- ===== CHARGES ===== -->
+      <section class="feature-card" style="margin-bottom:20px;">
+        <h3>Charges & Totals</h3>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:0 16px; max-width:720px;">
+          <div><label>Freight</label>
+            <input id="f-freight" type="number" step="0.01" oninput="recalc()"></div>
+          <div><label>Insurance</label>
+            <input id="f-insurance" type="number" step="0.01" oninput="recalc()"></div>
+          <div><label>Other Charges</label>
+            <input id="f-other_charges" type="number" step="0.01" oninput="recalc()"></div>
+          <div><label>Discount</label>
+            <input id="f-discount" type="number" step="0.01" oninput="recalc()"></div>
+        </div>
+        <div style="margin-top:18px; text-align:right; font-size:20px;">
+          <strong>Grand Total: <span id="t-currency3">USD</span></strong>
+          <strong id="t-grand" style="color:var(--primary);">0.00</strong>
+        </div>
+      </section>
+
+      <!-- ===== SHIPMENT DETAILS ===== -->
+      <section class="feature-card" style="margin-bottom:20px;">
+        <h3>Shipment Details <small style="color:var(--text-muted); font-weight:400;">(optional)</small></h3>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:0 16px;">
+          <div><label>PO Number</label><input id="f-po_number"></div>
+          <div><label>Reference Number</label><input id="f-reference_number"></div>
+          <div><label>Port of Loading</label><input id="f-port_of_loading"></div>
+          <div><label>Port of Discharge</label><input id="f-port_of_discharge"></div>
+          <div><label>Final Destination</label><input id="f-final_destination"></div>
+          <div><label>Country of Origin</label><input id="f-country_of_origin"></div>
+          <div><label>AWB Number (Air)</label><input id="f-awb_number"></div>
+          <div><label>BL Number (Sea)</label><input id="f-bl_number"></div>
+          <div><label>Container Number</label><input id="f-container_number"></div>
+          <div><label>Vessel / Flight</label><input id="f-vessel_flight"></div>
+        </div>
+      </section>
+
+      <!-- Custom Fields section (PRD §33-38) di-inject oleh custom-fields.js
+           sebelum tombol aksi di bawah ini -->
+
+      <!-- ===== ACTIONS ===== -->
+      <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:40px;">
+        <button class="btn btn-primary" onclick="saveAndDownload()" id="btn-save">Save & Download PDF</button>
+        <button class="btn btn-secondary" onclick="saveOnly()" id="btn-save-only">Save as Draft</button>
+        <a class="btn btn-secondary" href="/app.html">Cancel</a>
+      </div>
+
+    </form>
+  </main>
+
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/guard.js"></script>
+  <script src="js/pdf.js"></script>
+  <script src="js/master-fill.js"></script>
+  <script src="js/custom-fields.js"></script>
+  <script src="js/invoice.js"></script>
+</body>
+</html>

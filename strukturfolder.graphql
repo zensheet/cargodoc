@@ -1,0 +1,31 @@
+invoice-shipping-generator/
+│
+├── index.html                  # Halaman login
+├── app.html                    # Dashboard (shell setelah login)
+├── admin.html                  # Developer dashboard
+│
+├── css/
+│   └── app.css                 # Semua styling
+│
+├── js/
+│   ├── config.js               # Supabase URL + anon key
+│   ├── auth.js                 # Login, logout, session guard
+│   ├── guard.js                # Cek status & feature access
+│   ├── dashboard.js            # Render menu dashboard + locked features
+│   ├── master-data.js          # Products, Customers, Suppliers, Company
+│   ├── invoice.js              # Form invoice, items, kalkulasi, nomor
+│   ├── invoice-list.js         # History: view/edit/duplicate/delete
+│   ├── packinglist.js          # Packing list + from invoice
+│   ├── packinglist-list.js     # History packing list
+│   ├── pdf.js                  # jsPDF generator (invoice & PL)
+│   ├── customfields.js         # Suggested + custom fields
+│   ├── attachment.js           # Temporary browser attachment
+│   └── admin.js                # User management, lock/unlock, feature toggle
+│
+├── sql/
+│   └── schema.sql              # Seluruh SQL dari jawaban sebelumnya
+│
+├── vendor/                     # (opsional) jsPDF lokal jika tidak pakai CDN
+│   └── jspdf.umd.min.js
+│
+└── README.md                   # Cara setup & deploy
