@@ -9,14 +9,20 @@
 // ============================================
 
 let EDIT_ID = null; // null = create baru; berisi id = mode edit
+let IS_GUEST = false; // true = belum login (PRD §73 guest mode)
 
 (async function initInvoice() {
-  // PRD §9: feature gate — UI layer; RLS tetap security utama
-  const { allowed, session } = await requireFeature('invoice');
-  if (!session) return;
-  if (!allowed) { location.href = '/app.html'; return; }
+  // PRD §9 & §73: feature gate — bisa diakses guest (belum login) untuk
+  // invoice/packing_list. UI layer saja; RLS tetap security utama.
+  const { allowed, session, guest } = await requireFeatureOrGuest('invoice');
+  if (!allowed) { location.href = '/app.html'; return; } // login tapi fitur di-lock
 
-  document.getElementById('user-name').textContent = session.profile.email;
+  IS_GUEST = guest;
+  if (guest) {
+    renderGuestHeader(); // js/guest-auth.js
+  } else {
+    document.getElementById('user-name').textContent = session.profile.email;
+  }
 
   EDIT_ID = new URLSearchParams(location.search).get('id');
 
@@ -386,6 +392,16 @@ async function persistInvoice(data, status) {
 async function saveOnly() {
   const data = collectInvoice();
   softValidation(data); // warning saja, tetap lanjut
+
+  if (IS_GUEST) {
+    guestAuthGate(async () => {
+      await persistInvoice(data, 'draft');
+      alert('✅ Account created & invoice saved as draft.');
+      location.href = '/invoice-list.html';
+    });
+    return;
+  }
+
   const btn = document.getElementById('btn-save-only');
   btn.disabled = true; btn.textContent = EDIT_ID ? 'Updating...' : 'Saving...';
   try {
@@ -401,6 +417,24 @@ async function saveOnly() {
 async function saveAndDownload() {
   const data = collectInvoice();
   softValidation(data); // warning saja, tetap lanjut (PRD §32)
+
+  if (IS_GUEST) {
+    // 1) Preview watermark client-side -- TIDAK disimpan ke DB (PRD §73)
+    const previewInvoice = { ...data.invoice, invoice_number: data.invoice.invoice_number || 'PREVIEW' };
+    generateInvoicePDF({ ...data, invoice: previewInvoice, branding: null, watermark: true });
+
+    // 2) Modal signup/login ringan. Draft (`data`, masih di memori JS)
+    //    baru benar-benar disimpan ke DB SETELAH auth sukses.
+    guestAuthGate(async () => {
+      const saved = await persistInvoice(data, 'final');
+      const branding = await getBranding();
+      await generateInvoicePDF({ ...data, invoice: saved, branding }); // PDF asli, tanpa watermark
+      alert('✅ Account created & invoice saved. PDF downloaded.');
+      location.href = '/invoice-list.html';
+    });
+    return;
+  }
+
   const btn = document.getElementById('btn-save');
   btn.disabled = true; btn.textContent = EDIT_ID ? 'Updating...' : 'Saving...';
   try {

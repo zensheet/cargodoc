@@ -8,13 +8,18 @@
 // ============================================
 
 let EDIT_PL_ID = null; // null = create baru; berisi id = mode edit
+let IS_GUEST = false; // true = belum login (PRD §73 guest mode)
 
 (async function initPackingList() {
-  const { allowed, session } = await requireFeature('packing_list');
-  if (!session) return;
+  const { allowed, session, guest } = await requireFeatureOrGuest('packing_list');
   if (!allowed) { location.href = '/app.html'; return; }
 
-  document.getElementById('user-name').textContent = session.profile.email;
+  IS_GUEST = guest;
+  if (guest) {
+    renderGuestHeader(); // js/guest-auth.js
+  } else {
+    document.getElementById('user-name').textContent = session.profile.email;
+  }
 
   EDIT_PL_ID = new URLSearchParams(location.search).get('id');
 
@@ -443,6 +448,16 @@ async function persistPackingList(data, status) {
 async function saveOnly() {
   const data = collectPackingList();
   softValidationPl(data);
+
+  if (IS_GUEST) {
+    guestAuthGate(async () => {
+      await persistPackingList(data, 'draft');
+      alert('✅ Account created & packing list saved as draft.');
+      location.href = '/packinglist-list.html';
+    });
+    return;
+  }
+
   const btn = document.getElementById('btn-save-only');
   btn.disabled = true; btn.textContent = EDIT_PL_ID ? 'Updating...' : 'Saving...';
   try {
@@ -458,6 +473,24 @@ async function saveOnly() {
 async function saveAndDownload() {
   const data = collectPackingList();
   softValidationPl(data);
+
+  if (IS_GUEST) {
+    // 1) Preview watermark client-side -- TIDAK disimpan ke DB (PRD §73)
+    const previewPl = { ...data.packing_list, packing_list_number: data.packing_list.packing_list_number || 'PREVIEW' };
+    generatePackingListPDF({ packing_list: previewPl, ...data, branding: null, watermark: true });
+
+    // 2) Modal signup/login ringan. Draft (`data`, masih di memori JS)
+    //    baru benar-benar disimpan ke DB SETELAH auth sukses.
+    guestAuthGate(async () => {
+      const saved = await persistPackingList(data, 'final');
+      const branding = await getBranding();
+      await generatePackingListPDF({ packing_list: saved, ...data, branding }); // asli, tanpa watermark
+      alert('✅ Account created & packing list saved. PDF downloaded.');
+      location.href = '/packinglist-list.html';
+    });
+    return;
+  }
+
   const btn = document.getElementById('btn-save');
   btn.disabled = true; btn.textContent = EDIT_PL_ID ? 'Updating...' : 'Saving...';
   try {

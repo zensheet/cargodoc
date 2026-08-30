@@ -41,7 +41,7 @@ async function getSession() {
 
 async function requireAuth() {
   const session = await getSession();
-  if (!session) location.href = '/index.html';
+  if (!session) location.href = '/login.html';
   return session;
 }
 
@@ -73,4 +73,27 @@ async function requireFeature(featureKey) {
 async function refreshSession() {
   window.APP_SESSION = null;
   return getSession();
+}
+
+/**
+ * Feature gate versi GUEST MODE (PRD §73). Dipakai HANYA di invoice.html
+ * & packinglist.html -- dua-duanya boleh diakses TANPA login.
+ *
+ *  - Belum login sama sekali  -> { allowed:true, session:null, guest:true }
+ *    (form tetap bisa dipakai; simpan ke DB ditunda sampai user signup/login
+ *    di titik klik Save/Download -- lihat js/guest-auth.js)
+ *  - Sudah login tapi fitur ini tidak di-enable untuk akunnya (kasus akun
+ *    admin-created yang belum di-enable Developer) -> tetap ditolak & lempar
+ *    ke /app.html, SAMA seperti requireFeature() biasa. Guest mode tidak
+ *    dimaksudkan untuk membypass proteksi akun yang sudah login.
+ *  - Developer selalu allowed (bypass), sama seperti requireFeature().
+ */
+async function requireFeatureOrGuest(featureKey) {
+  const session = await getSession(); // TIDAK redirect kalau belum login
+  if (!session) return { allowed: true, session: null, guest: true };
+
+  const allowed = session.profile.role === 'developer'
+    || session.features[featureKey] === true;
+
+  return { allowed, session, guest: false };
 }

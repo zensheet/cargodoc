@@ -86,11 +86,17 @@ Deno.serve(async (req) => {
     }
 
     // ---------- 3. Buat user di auth.users ----------
+    // app_metadata.created_by = 'admin' -> penanda untuk trigger
+    // handle_new_user (lihat sql/13-self-signup-guest-mode.sql), supaya
+    // account ini TIDAK dianggap self-signup (jadi feature access default
+    // tetap OFF, beda dari akun hasil guest-mode signup di invoice.html/
+    // packinglist.html yang otomatis dapat invoice+packing_list ON).
     const { data: created, error: createErr } = await admin.auth.admin.createUser({
       email,
       password,
       email_confirm: true, // langsung dianggap terverifikasi (tidak ada alur signup publik)
       user_metadata: { full_name },
+      app_metadata: { created_by: 'admin' },
     });
 
     if (createErr) {

@@ -1,4 +1,27 @@
 // ============================================
+// WATERMARK — dipakai untuk PDF preview guest mode (belum login),
+// PRD §73. Ditimpakan ke SEMUA halaman PDF, opacity rendah biar teks asli
+// tetap kebaca tapi jelas ini bukan dokumen final.
+// ============================================
+function drawWatermark(pdf, W, H) {
+  const hasGState = typeof pdf.GState === 'function' && typeof pdf.setGState === 'function';
+  if (hasGState) pdf.setGState(new pdf.GState({ opacity: 0.18 }));
+  pdf.setTextColor(200, 30, 30);
+  pdf.setFontSize(42);
+  pdf.setFont(undefined, 'bold');
+  pdf.text('DRAFT — SIGN UP TO DOWNLOAD', W / 2, H / 2, { angle: 35, align: 'center' });
+  if (hasGState) pdf.setGState(new pdf.GState({ opacity: 1 }));
+}
+
+function applyWatermarkToAllPages(pdf, W, H) {
+  const pages = pdf.internal.getNumberOfPages();
+  for (let p = 1; p <= pages; p++) {
+    pdf.setPage(p);
+    drawWatermark(pdf, W, H);
+  }
+}
+
+// ============================================
 // HEADER (dipakai invoice & packing list) — warna & logo dari branding
 // per user (js/branding.js -> getBranding()). branding bisa undefined
 // (mis. dipanggil dari kode lama yang belum di-update) — tetap fallback
@@ -152,7 +175,12 @@ async function generateInvoicePDF(data) {
   // jadi otomatis berfungsi di semua jalur download PDF.
   y = renderCustomFieldsBlock(pdf, y, inv.custom_fields, W, M);
 
-  pdf.save(`${inv.invoice_number}.pdf`);
+  if (data.watermark) {
+    applyWatermarkToAllPages(pdf, W, 297);
+    pdf.save(`PREVIEW-${inv.invoice_number || 'invoice'}.pdf`);
+  } else {
+    pdf.save(`${inv.invoice_number}.pdf`);
+  }
 }
 
 // Blok "ADDITIONAL INFORMATION" dari custom_fields (jsonb: {label: value}).
@@ -273,5 +301,10 @@ async function generatePackingListPDF(data) {
   // di generateInvoicePDF() soal kenapa ini dipindah dari monkey-patch.
   y = renderCustomFieldsBlock(pdf, y, pl.custom_fields, W, M);
 
-  pdf.save(`${pl.packing_list_number}.pdf`);
+  if (data.watermark) {
+    applyWatermarkToAllPages(pdf, W, 297);
+    pdf.save(`PREVIEW-${pl.packing_list_number || 'packing-list'}.pdf`);
+  } else {
+    pdf.save(`${pl.packing_list_number}.pdf`);
+  }
 }
