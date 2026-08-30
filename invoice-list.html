@@ -21,15 +21,23 @@
 
   <main class="app-main">
 
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
       <h2>Invoice History</h2>
-      <a class="btn btn-primary" href="/invoice.html">+ New Invoice</a>
+      <div style="display:flex; gap:10px;">
+        <a class="btn btn-primary" href="/invoice.html">+ New Commercial Invoice</a>
+        <a class="btn btn-secondary" href="/invoice.html?type=proforma">+ New Proforma Invoice</a>
+      </div>
     </div>
 
     <!-- Filter sederhana -->
     <div style="display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap;">
       <input id="search" placeholder="🔍 Search invoice number / receiver..."
              style="max-width:280px;" oninput="renderList()">
+      <select id="filter-doc-type" onchange="renderList()" style="max-width:170px;">
+        <option value="">All Types</option>
+        <option value="commercial">Commercial Invoice</option>
+        <option value="proforma">Proforma Invoice</option>
+      </select>
       <select id="filter-status" onchange="renderList()" style="max-width:150px;">
         <option value="">All Status</option>
         <option value="draft">Draft</option>

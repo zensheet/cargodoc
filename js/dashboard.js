@@ -7,10 +7,16 @@
 const FEATURE_CATALOG = [
   { key: 'invoice',               name: 'Commercial Invoice',     desc: 'Create professional export/import invoices with items, charges & totals.', href: '/invoice.html', historyHref: '/invoice-list.html' },
   { key: 'packing_list',          name: 'Packing List',           desc: 'Detail packages, weights & dimensions. Can be created from an invoice.',    href: '/packinglist.html', historyHref: '/packinglist-list.html' },
+  // Proforma Invoice pakai halaman & tabel yang sama dengan Commercial
+  // Invoice (dibedakan via doc_type) — jadi gateKey ikut feature 'invoice',
+  // bukan toggle terpisah. Siapapun yang boleh bikin Commercial Invoice
+  // otomatis boleh bikin Proforma juga.
+  { key: 'proforma_invoice', gateKey: 'invoice', name: 'Proforma Invoice',
+    desc: 'Pre-shipment quotations for buyers to arrange payment/LC — convert to Commercial Invoice once shipment is confirmed.',
+    href: '/invoice.html?type=proforma', historyHref: '/invoice-list.html?type=proforma' },
   { key: 'purchase_order',        name: 'Purchase Order',         desc: 'Issue POs to suppliers. (Coming soon)',                                     href: null },
   { key: 'shipping_rate',         name: 'Shipping Rate Checker',  desc: 'Look up shipping rates. (Coming soon)',                                     href: null },
   { key: 'duty_tax',              name: 'Duty & Tax Calculator',  desc: 'Estimate duties & taxes. (Coming soon)',                                    href: null },
-  { key: 'proforma_invoice',      name: 'Proforma Invoice',       desc: 'Pre-shipment proforma documents. (Coming soon)',                            href: null },
   { key: 'quotation',             name: 'Quotation',              desc: 'Send price quotations to customers. (Coming soon)',                         href: null },
   { key: 'certificate_of_origin', name: 'Certificate of Origin',  desc: 'COO documents. (Coming soon)',                                              href: null },
   { key: 'landed_cost',           name: 'Landed Cost Calculator', desc: 'Total landed cost estimates. (Coming soon)',                                href: null },
@@ -39,8 +45,9 @@ const FEATURE_CATALOG = [
   grid.innerHTML = '';
 
   for (const f of FEATURE_CATALOG) {
-    // Developer bypass; customer cek features map
-    const enabled = isDev || session.features[f.key] === true;
+    // Developer bypass; customer cek features map (gateKey dipakai kalau
+    // kartu ini menumpang feature lain, mis. Proforma Invoice -> 'invoice')
+    const enabled = isDev || session.features[f.gateKey || f.key] === true;
     const comingSoon = f.href === null;
 
     const card = document.createElement('div');

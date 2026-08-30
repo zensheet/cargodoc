@@ -10,6 +10,14 @@
 
 let EDIT_ID = null; // null = create baru; berisi id = mode edit
 let IS_GUEST = false; // true = belum login (PRD §73 guest mode)
+let DOC_TYPE = 'commercial'; // 'commercial' | 'proforma' — lihat PRD Proforma Invoice
+
+// Prefix nomor & judul dokumen per doc_type — satu sumber kebenaran,
+// dipakai baik oleh nextInvoiceNumber() maupun UI (judul, header).
+const DOC_TYPE_META = {
+  commercial: { prefix: 'INV', title: 'Commercial Invoice', pdfTitle: 'COMMERCIAL INVOICE' },
+  proforma:   { prefix: 'PI',  title: 'Proforma Invoice',   pdfTitle: 'PROFORMA INVOICE' },
+};
 
 (async function initInvoice() {
   // PRD §9 & §73: feature gate — bisa diakses guest (belum login) untuk
@@ -33,17 +41,43 @@ let IS_GUEST = false; // true = belum login (PRD §73 guest mode)
   if (EDIT_ID) {
     await loadInvoiceForEdit(EDIT_ID);
   } else {
+    // Tipe dokumen ditentukan lewat ?type=proforma di URL (link dari
+    // dashboard/history). Default tetap Commercial Invoice.
+    const typeParam = new URLSearchParams(location.search).get('type');
+    DOC_TYPE = typeParam === 'proforma' ? 'proforma' : 'commercial';
+    applyDocTypeUI();
+
     // Default date = hari ini
     document.getElementById('f-invoice_date').value =
       new Date().toISOString().slice(0, 10);
 
     // Nomor invoice otomatis
-    document.getElementById('f-invoice_number').value = await nextInvoiceNumber();
+    document.getElementById('f-invoice_number').value = await nextInvoiceNumber(DOC_TYPE);
 
     // Baris item pertama
     addItemRow();
   }
 })();
+
+// ---------- DOC TYPE UI (Commercial vs Proforma) ----------
+// Ganti judul halaman/header & tampilkan field yang cuma relevan buat
+// Proforma (Valid Until), tanpa duplikasi halaman/HTML.
+function applyDocTypeUI() {
+  const meta = DOC_TYPE_META[DOC_TYPE];
+  document.title = `${meta.title} — Invoice Shipping Generator`;
+  const brand = document.querySelector('.app-header .brand');
+  if (brand && !EDIT_ID) {
+    brand.innerHTML = `<a href="/app.html" style="text-decoration:none;color:inherit;">📦 ISG</a> / ${meta.title}`;
+  }
+  const numberHint = document.getElementById('invoice-number-hint');
+  if (numberHint) numberHint.textContent = `Auto-generated (${meta.prefix}-{YEAR}-{SEQ})`;
+
+  const validUntilRow = document.getElementById('valid-until-row');
+  if (validUntilRow) validUntilRow.hidden = DOC_TYPE !== 'proforma';
+
+  const convertBtn = document.getElementById('btn-convert-commercial');
+  if (convertBtn) convertBtn.hidden = !(EDIT_ID && DOC_TYPE === 'proforma');
+}
 
 // ---------- LOAD UNTUK EDIT ----------
 async function loadInvoiceForEdit(id) {
@@ -58,18 +92,24 @@ async function loadInvoiceForEdit(id) {
   const { data: items } = await supabase
     .from('invoice_items').select('*').eq('invoice_id', id).order('created_at');
 
+  // Tipe dokumen mengikuti data tersimpan (tidak berubah setelah dibuat)
+  DOC_TYPE = inv.doc_type === 'proforma' ? 'proforma' : 'commercial';
+  const meta = DOC_TYPE_META[DOC_TYPE];
+
   // Header halaman & tombol -> jelasin ini mode edit
   const heading = document.querySelector('.app-header .brand');
   if (heading) heading.innerHTML =
-    `<a href="/app.html" style="text-decoration:none;color:inherit;">📦 ISG</a> / Edit Invoice ${inv.invoice_number}`;
+    `<a href="/app.html" style="text-decoration:none;color:inherit;">📦 ISG</a> / Edit ${meta.title} ${inv.invoice_number}`;
   document.getElementById('btn-save').textContent = 'Update & Download PDF';
   document.getElementById('btn-save-only').textContent = 'Update Draft';
+  applyDocTypeUI();
 
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val ?? ''; };
 
   set('f-shipment_type', inv.shipment_type || 'export');
   set('f-invoice_number', inv.invoice_number);
   set('f-invoice_date', inv.invoice_date);
+  set('f-valid_until', inv.valid_until);
   set('f-currency', inv.currency || 'USD');
   set('f-payment_terms', inv.payment_terms);
   set('f-incoterms', inv.incoterms);
@@ -151,14 +191,18 @@ async function loadInvoiceForEdit(id) {
 
 
 // ---------- NOMOR INVOICE (PRD §30) ----------
-async function nextInvoiceNumber() {
+// docType: 'commercial' (prefix INV-) atau 'proforma' (prefix PI-) —
+// dua seri nomor terpisah supaya tidak campur di pembukuan.
+async function nextInvoiceNumber(docType = DOC_TYPE) {
+  const meta = DOC_TYPE_META[docType] || DOC_TYPE_META.commercial;
   const year = new Date().getFullYear();
   const { count, error } = await supabase
     .from('invoices')
     .select('*', { count: 'exact', head: true })
-    .like('invoice_number', `INV-${year}-%`);
+    .eq('doc_type', docType)
+    .like('invoice_number', `${meta.prefix}-${year}-%`);
   if (error) console.warn(error);
-  return `INV-${year}-${String((count || 0) + 1).padStart(5, '0')}`;
+  return `${meta.prefix}-${year}-${String((count || 0) + 1).padStart(5, '0')}`;
 }
 
 // Edit manual (default readonly) — mode auto di-restore kalau dikosongkan
@@ -243,9 +287,11 @@ function collectInvoice() {
 
   return {
     invoice: {
+      doc_type: DOC_TYPE,
       shipment_type: v('f-shipment_type'),
       invoice_number: v('f-invoice_number') === 'AUTO' ? null : v('f-invoice_number'),
       invoice_date: v('f-invoice_date') || null,
+      valid_until: DOC_TYPE === 'proforma' ? (v('f-valid_until') || null) : null,
       currency: v('f-currency'),
       payment_terms: v('f-payment_terms') || null,
       incoterms: v('f-incoterms') || null,
@@ -415,6 +461,35 @@ async function saveOnly() {
   } catch (e) {
     alert(e.message); btn.disabled = false;
     btn.textContent = EDIT_ID ? 'Update Draft' : 'Save as Draft';
+  }
+}
+
+// ---------- CONVERT PROFORMA -> COMMERCIAL INVOICE ----------
+// Barang sudah pasti dikirim: buat Commercial Invoice baru dari data
+// proforma ini (nomor seri INV- baru, valid_until dihapus). Proforma
+// aslinya TIDAK dihapus/diubah — tetap ada sebagai riwayat quotation.
+async function convertToCommercial() {
+  if (!EDIT_ID || DOC_TYPE !== 'proforma') return;
+  if (!confirm('Convert this Proforma Invoice into a new Commercial Invoice?\n'
+    + 'A new Commercial Invoice will be created with a new number. '
+    + 'This Proforma Invoice will not be changed.')) return;
+
+  const data = collectInvoice();
+  data.invoice.doc_type = 'commercial';
+  data.invoice.invoice_number = null; // paksa generate nomor INV- baru
+  data.invoice.valid_until = null;
+
+  const prevEditId = EDIT_ID;
+  EDIT_ID = null; // supaya persistInvoice() INSERT baris baru, bukan update proforma-nya
+  try {
+    DOC_TYPE = 'commercial';
+    const saved = await persistInvoice(data, 'draft');
+    alert(`✅ Converted to Commercial Invoice ${saved.invoice_number}.`);
+    location.href = `/invoice.html?id=${saved.id}`;
+  } catch (e) {
+    EDIT_ID = prevEditId;
+    DOC_TYPE = 'proforma';
+    alert(e.message);
   }
 }
 

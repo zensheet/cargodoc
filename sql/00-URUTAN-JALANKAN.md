@@ -61,6 +61,23 @@ sebelumnya (banyak pakai `references` / `ALTER TABLE ... ADD COLUMN`).
     `admin.html`. Butuh langkah 9 sudah dijalankan (meng-`replace`
     `handle_new_user()` yang sama).
 
+11. **`15-fix-invoice-number-scope.sql`**
+    Fix bug: `invoice_number`/`packing_list_number` sempat `unique` secara
+    GLOBAL (lintas semua user), padahal nomor auto-generate cuma
+    menghitung urutan milik user yang login (RLS). Akibatnya bisa bentrok
+    antar akun berbeda (`duplicate key value violates unique constraint`).
+    Diganti jadi `unique(user_id, invoice_number)` / `unique(user_id,
+    packing_list_number)` — unik per akun, bukan lintas akun.
+
+12. **`16-proforma-invoice-doc-type.sql`**
+    Menambah kolom `invoices.doc_type` (`'commercial'` / `'proforma'`)
+    dan `invoices.valid_until`. Proforma Invoice pakai tabel & halaman
+    yang sama dengan Commercial Invoice (field-nya ~95% identik),
+    dibedakan lewat `doc_type` — bukan tabel terpisah. Nomor otomatisnya
+    pakai seri terpisah (`PI-{YEAR}-{SEQ}` vs `INV-{YEAR}-{SEQ}`), dan
+    tetap tercover oleh feature `invoice` yang sama (tidak perlu toggle
+    admin baru).
+
 ---
 
 Catatan: tabel `customers` dan `suppliers` yang sempat ada di draft awal

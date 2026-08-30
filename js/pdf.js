@@ -64,7 +64,9 @@ async function generateInvoicePDF(data) {
   const { invoice: inv, shipper, receiver, billTo, shipTo, items, branding } = data;
   const pdf = new jspdf.jsPDF({ unit: 'mm', format: 'a4' });
   const W = 210, M = 14;
-  let y = await drawDocHeader(pdf, 'COMMERCIAL INVOICE', inv.invoice_number, inv.invoice_date, branding, W, M);
+  // Proforma vs Commercial Invoice — judul dokumen beda, sisanya identik
+  const docTitle = inv.doc_type === 'proforma' ? 'PROFORMA INVOICE' : 'COMMERCIAL INVOICE';
+  let y = await drawDocHeader(pdf, docTitle, inv.invoice_number, inv.invoice_date, branding, W, M);
 
   // Shipper / Receiver (Empty Field Rule)
   const block = (title, obj, x) => {
@@ -96,6 +98,7 @@ async function generateInvoicePDF(data) {
   // Shipment details (Empty Field Rule)
   const details = [
     ['Shipment Type', inv.shipment_type], ['Currency', inv.currency],
+    ['Valid Until', inv.doc_type === 'proforma' ? inv.valid_until : null],
     ['Payment Terms', inv.payment_terms], ['Incoterms', inv.incoterms],
     ['PO Number', inv.po_number], ['Reference', inv.reference_number],
     ['Port of Loading', inv.port_of_loading], ['Port of Discharge', inv.port_of_discharge],

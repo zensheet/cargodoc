@@ -13,6 +13,14 @@ let ALL_INVOICES = [];
   if (!allowed) { location.href = '/app.html'; return; }
 
   document.getElementById('user-name').textContent = session.profile.email;
+
+  // Prefill filter tipe dokumen dari ?type= (link dari dashboard, mis.
+  // /invoice-list.html?type=proforma)
+  const typeParam = new URLSearchParams(location.search).get('type');
+  if (typeParam === 'proforma' || typeParam === 'commercial') {
+    document.getElementById('filter-doc-type').value = typeParam;
+  }
+
   await loadInvoices();
 })();
 
@@ -39,13 +47,16 @@ function renderList() {
   const container = document.getElementById('list-container');
   const search = document.getElementById('search').value.toLowerCase();
   const status = document.getElementById('filter-status').value;
+  const docTypeEl = document.getElementById('filter-doc-type');
+  const docType = docTypeEl ? docTypeEl.value : '';
 
   const filtered = ALL_INVOICES.filter(inv => {
     const matchSearch = !search
       || inv.invoice_number.toLowerCase().includes(search)
       || (inv.receiver_name || '').toLowerCase().includes(search);
     const matchStatus = !status || inv.status === status;
-    return matchSearch && matchStatus;
+    const matchDocType = !docType || (inv.doc_type || 'commercial') === docType;
+    return matchSearch && matchStatus && matchDocType;
   });
 
   if (!filtered.length) {
@@ -62,6 +73,7 @@ function renderList() {
   const rows = filtered.map(inv => `
     <tr>
       <td><strong>${esc(inv.invoice_number)}</strong></td>
+      <td><span class="badge ${inv.doc_type === 'proforma' ? 'badge-locked' : 'badge-active'}">${inv.doc_type === 'proforma' ? 'Proforma' : 'Commercial'}</span></td>
       <td>${esc(inv.invoice_date || '—')}</td>
       <td>${esc(inv.receiver_name || '—')}</td>
       <td>${esc(inv.currency)}</td>
@@ -80,7 +92,7 @@ function renderList() {
     <table class="data-table">
       <thead>
         <tr>
-          <th>Invoice No.</th><th>Date</th><th>Receiver</th>
+          <th>Invoice No.</th><th>Type</th><th>Date</th><th>Receiver</th>
           <th>Cur</th><th style="text-align:right;">Grand Total</th>
           <th>Status</th><th>Actions</th>
         </tr>
@@ -190,7 +202,7 @@ async function duplicateInvoice(id) {
   const { data: items } = await supabase
     .from('invoice_items').select('*').eq('invoice_id', id);
 
-  const newNumber = await nextInvoiceNumber();
+  const newNumber = await nextInvoiceNumber(inv.doc_type || 'commercial');
 
   // Copy semua field KECUALI id, timestamps, nomor lama
   const { id:_, created_at, updated_at, invoice_number, ...copy } = inv;
@@ -228,11 +240,15 @@ async function deleteInvoice(id, number) {
 }
 
 // ---------- Nomor baru utk duplikat ----------
-async function nextInvoiceNumber() {
+// docType: 'commercial' (INV-) atau 'proforma' (PI-) — dua seri terpisah,
+// sinkron dengan DOC_TYPE_META di invoice.js.
+async function nextInvoiceNumber(docType = 'commercial') {
+  const prefix = docType === 'proforma' ? 'PI' : 'INV';
   const year = new Date().getFullYear();
   const { count } = await supabase
     .from('invoices')
     .select('*', { count: 'exact', head: true })
-    .like('invoice_number', `INV-${year}-%`);
-  return `INV-${year}-${String((count || 0) + 1).padStart(5, '0')}`;
+    .eq('doc_type', docType)
+    .like('invoice_number', `${prefix}-${year}-%`);
+  return `${prefix}-${year}-${String((count || 0) + 1).padStart(5, '0')}`;
 }
