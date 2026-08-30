@@ -3,7 +3,12 @@
 // PRD §6: Email + password (dibuat oleh Developer, tidak ada public signup)
 // ============================================
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Ganti namespace window.supabase (library) dengan instance client.
+// Sengaja pakai assignment biasa, BUKAN `const supabase = ...` — karena
+// CDN supabase-js@2 sudah bikin global bernama `supabase` duluan, dan
+// `const`/`let` tidak boleh mendeklarasikan ulang nama global yang sudah
+// ada (-> "Identifier 'supabase' has already been declared").
+window.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Session cache di memori tab ini (tidak simpan password)
 window.APP_SESSION = null;

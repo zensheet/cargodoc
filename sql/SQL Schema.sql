@@ -13,9 +13,17 @@ create table profiles (
 
 alter table profiles enable row level security;
 
+-- SECURITY DEFINER: query ini jalan dengan hak pemilik function (bukan RLS
+-- pemanggil), jadi TIDAK memicu ulang policy "read own profile" di bawah.
+-- Tanpa ini, policy yang mengecek role developer dengan SELECT langsung ke
+-- profiles akan memicu infinite recursion (error 42P17).
+create function public.is_developer()
+returns boolean language sql security definer stable as $$
+  select coalesce((select role = 'developer' from profiles where id = auth.uid()), false);
+$$;
+
 create policy "read own profile" on profiles
-  for select using (auth.uid() = id or exists (
-    select 1 from profiles p where p.id = auth.uid() and p.role = 'developer'));
+  for select using (auth.uid() = id or public.is_developer());
 create policy "update own profile" on profiles
   for update using (auth.uid() = id);
 
@@ -60,8 +68,7 @@ alter table user_features enable row level security;
 
 create policy "read features" on features for select using (true);
 create policy "read own features" on user_features for select
-  using (auth.uid() = user_id or exists (
-    select 1 from profiles p where p.id = auth.uid() and p.role = 'developer'));
+  using (auth.uid() = user_id or public.is_developer());
 
 -- seed features
 insert into features (feature_key, feature_name, active) values
@@ -170,7 +177,7 @@ begin
     execute format('alter table %I enable row level security', t);
     execute format('create policy "own select" on %I for select using (
       user_id = auth.uid()
-      or exists(select 1 from profiles p where p.id=auth.uid() and p.role=''developer''))', t);
+      or public.is_developer())', t);
     execute format('create policy "own insert" on %I for insert with check (
       user_id = auth.uid())', t);
     execute format('create policy "own update" on %I for update using (
@@ -186,7 +193,7 @@ $$;
 alter table invoice_items enable row level security;
 create policy "own select" on invoice_items for select using (
   exists(select 1 from invoices inv where inv.id = invoice_id and inv.user_id = auth.uid())
-  or exists(select 1 from profiles p where p.id = auth.uid() and p.role = 'developer'));
+  or public.is_developer());
 create policy "own insert" on invoice_items for insert with check (
   exists(select 1 from invoices inv where inv.id = invoice_id and inv.user_id = auth.uid()));
 create policy "own update" on invoice_items for update using (
@@ -197,7 +204,7 @@ create policy "own delete" on invoice_items for delete using (
 alter table packing_list_items enable row level security;
 create policy "own select" on packing_list_items for select using (
   exists(select 1 from packing_lists pl where pl.id = packing_list_id and pl.user_id = auth.uid())
-  or exists(select 1 from profiles p where p.id = auth.uid() and p.role = 'developer'));
+  or public.is_developer());
 create policy "own insert" on packing_list_items for insert with check (
   exists(select 1 from packing_lists pl where pl.id = packing_list_id and pl.user_id = auth.uid()));
 create policy "own update" on packing_list_items for update using (
@@ -224,8 +231,7 @@ $$;
 -- contoh policy tambahan pada invoices: hanya jika aktif & punya feature
 drop policy "own select" on invoices;
 create policy "own select" on invoices for select using (
-  user_id = auth.uid() or exists(
-    select 1 from profiles p where p.id=auth.uid() and p.role='developer'));
+  user_id = auth.uid() or public.is_developer());
 drop policy "own insert" on invoices;
 create policy "own insert" on invoices for insert with check (
   user_id = auth.uid() and public.is_account_active() and public.has_feature('invoice'));
@@ -233,8 +239,7 @@ create policy "own insert" on invoices for insert with check (
 -- policy setara pada packing_lists: hanya jika aktif & punya feature
 drop policy "own select" on packing_lists;
 create policy "own select" on packing_lists for select using (
-  user_id = auth.uid() or exists(
-    select 1 from profiles p where p.id=auth.uid() and p.role='developer'));
+  user_id = auth.uid() or public.is_developer());
 drop policy "own insert" on packing_lists;
 create policy "own insert" on packing_lists for insert with check (
   user_id = auth.uid() and public.is_account_active() and public.has_feature('packing_list'));
