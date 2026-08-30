@@ -27,7 +27,14 @@ let CF_CONTEXT = null;  // 'invoice' | 'packing_list'
   await loadFieldDefs();
   renderCustomFieldsUI();
   wrapPersist();
-  patchPdfSave();
+  // FIX: patchPdfSave() dihapus. Sebelumnya custom fields di PDF hanya
+  // muncul kalau di-generate dari halaman form ini (karena patch di sini
+  // yang menyuntikkan teksnya ke jsPDF.save()) — TIDAK muncul kalau
+  // PDF di-download dari halaman History (invoice-list.html/
+  // packinglist-list.html), yang tidak me-load custom-fields.js.
+  // Sekarang js/pdf.js membaca invoice.custom_fields / packing_list.custom_fields
+  // langsung dari data (lihat renderCustomFieldsBlock di pdf.js), jadi
+  // bekerja konsisten di semua jalur download PDF tanpa perlu patch ini.
 })();
 
 // ---------- LOAD DEFINITIONS (§34-35) ----------
@@ -44,6 +51,14 @@ async function loadFieldDefs() {
 
 // ---------- RENDER UI DI FORM ----------
 function renderCustomFieldsUI() {
+  // FIX: hapus render lama dulu sebelum insert yang baru. Sebelumnya
+  // fungsi ini dipanggil ulang setiap kali user klik "+ Add Field" tanpa
+  // membuang section lama, sehingga muncul 2 section "Additional
+  // Information" duplikat (id sama) di DOM — bikin getElementById()
+  // untuk field yang sudah ada sebelumnya mengambil elemen yang salah
+  // (nilai yang diketik user bisa tidak terbaca saat save).
+  document.getElementById('custom-fields-section')?.remove();
+
   // Sisipkan section sebelum tombol aksi
   const actions = document.querySelector('#btn-save')?.parentElement;
   if (!actions) return;
@@ -160,36 +175,4 @@ function collectCfValues() {
     if (val) out[d.field_label] = val; // simpan by label agar mudah ditampilkan
   });
   return out;
-}
-
-// ---------- PDF: TAMBAH CUSTOM FIELDS (§36) ----------
-// Patch jsPDF.save: sebelum file tersimpan, gambar blok custom fields
-// di kiri-bawah halaman terakhir (area umumnya kosong).
-function patchPdfSave() {
-  const proto = jspdf.jsPDF.prototype;
-  if (proto.__cfPatched) return;
-  proto.__cfPatched = true;
-
-  proto.save = function (filename) {
-    try {
-      const entries = Object.entries(collectCfValues());
-      if (entries.length) {
-        // pastikan di halaman terakhir
-        if (this.getNumberOfPages() > 1) this.setPage(this.getNumberOfPages());
-        let y = 272;
-        this.setFontSize(8); this.setFont(undefined, 'bold'); this.setTextColor(90);
-        this.text('ADDITIONAL INFORMATION', 14, y); y += 5;
-        this.setFont(undefined, 'normal'); this.setTextColor(0);
-        entries.forEach(([k, v]) => {
-          if (y > 288) return; // jaga margin bawah
-          this.text(`${k}: ${v}`.slice(0, 95), 14, y);
-          y += 4.5;
-        });
-      }
-    } catch (e) { console.warn('custom fields pdf skipped:', e); }
-    // panggil save asli
-    return jspdf.jsPDF.API.save
-      ? jspdf.jsPDF.API.save.call(this, filename)
-      : this.__proto__.__proto__.save?.call(this, filename);
-  };
 }

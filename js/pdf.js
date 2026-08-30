@@ -3,7 +3,7 @@
 // ============================================
 
 function generateInvoicePDF(data) {
-  const { invoice: inv, shipper, receiver, items } = data;
+  const { invoice: inv, shipper, receiver, billTo, shipTo, items } = data;
   const pdf = new jspdf.jsPDF({ unit: 'mm', format: 'a4' });
   const W = 210, M = 14;
   let y = 0;
@@ -36,6 +36,14 @@ function generateInvoicePDF(data) {
   const yL = block('SHIPPER / EXPORTER', shipper, M);
   const yR = block('RECEIVER / IMPORTER', receiver, W / 2 + 4);
   y = Math.max(yL, yR) + 6;
+
+  // Bill To / Ship To (opsional — Empty Field Rule: baris ini sama sekali
+  // tidak digambar kalau keduanya kosong, biar tidak makan tempat percuma)
+  if (billTo?.company_name || shipTo?.company_name) {
+    const bY = billTo?.company_name ? block('BILL TO', billTo, M) : y;
+    const sY = shipTo?.company_name ? block('SHIP TO', shipTo, W / 2 + 4) : y;
+    y = Math.max(bY, sY) + 6;
+  }
 
   // Shipment details (Empty Field Rule)
   const details = [
@@ -94,6 +102,7 @@ function generateInvoicePDF(data) {
   // Totals (Empty Field Rule — only show charges that are non-zero)
   y += 4;
   const totalRow = (label, val, bold = false) => {
+    if (y > 280) { pdf.addPage(); y = 20; }
     pdf.setFont(undefined, bold ? 'bold' : 'normal');
     pdf.text(label, W - M - 60, y);
     pdf.text(String(val), W - M, y, { align: 'right' });
@@ -108,7 +117,36 @@ function generateInvoicePDF(data) {
   if (inv.discount) totalRow('Discount', `-${cur} ${inv.discount.toFixed(2)}`);
   totalRow('Grand Total', `${cur} ${(inv.grand_total ?? 0).toFixed(2)}`, true);
 
+  // Additional Information / custom fields (PRD §33-38)
+  // FIX: dulu ini di-inject lewat monkey-patch jsPDF.prototype.save() di
+  // custom-fields.js, yang hanya aktif di halaman form (invoice.html) —
+  // TIDAK aktif saat generate PDF dari invoice-list.html (halaman History,
+  // tempat tombol "Download PDF" paling sering dipakai). Jadi custom field
+  // yang sudah tersimpan di DB tidak pernah muncul di PDF yang di-download
+  // dari situ. Sekarang dibaca langsung dari inv.custom_fields di sini,
+  // jadi otomatis berfungsi di semua jalur download PDF.
+  y = renderCustomFieldsBlock(pdf, y, inv.custom_fields, W, M);
+
   pdf.save(`${inv.invoice_number}.pdf`);
+}
+
+// Blok "ADDITIONAL INFORMATION" dari custom_fields (jsonb: {label: value}).
+// Dipakai invoice & packing list PDF.
+function renderCustomFieldsBlock(pdf, y, customFields, W, M) {
+  const entries = Object.entries(customFields || {}).filter(([, v]) => v);
+  if (!entries.length) return y;
+
+  y += 2;
+  if (y > 270) { pdf.addPage(); y = 20; }
+  pdf.setFontSize(8); pdf.setFont(undefined, 'bold'); pdf.setTextColor(90);
+  pdf.text('ADDITIONAL INFORMATION', M, y); y += 5;
+  pdf.setFont(undefined, 'normal'); pdf.setTextColor(0);
+  entries.forEach(([k, v]) => {
+    if (y > 290) { pdf.addPage(); y = 20; }
+    pdf.text(`${k}: ${v}`, M, y, { maxWidth: W - 2 * M });
+    y += 4.5;
+  });
+  return y;
 }
 
 // ============================================
@@ -116,7 +154,7 @@ function generateInvoicePDF(data) {
 // ============================================
 
 function generatePackingListPDF(data) {
-  const { packing_list: pl, shipper, receiver, packages } = data;
+  const { packing_list: pl, shipper, receiver, billTo, shipTo, packages } = data;
   const pdf = new jspdf.jsPDF({ unit: 'mm', format: 'a4' });
   const W = 210, M = 14;
   let y = 0;
@@ -149,6 +187,13 @@ function generatePackingListPDF(data) {
   const yL = block('SHIPPER / EXPORTER', shipper, M);
   const yR = block('RECEIVER / IMPORTER', receiver, W / 2 + 4);
   y = Math.max(yL, yR) + 6;
+
+  // Bill To / Ship To (opsional — Empty Field Rule)
+  if (billTo?.company_name || shipTo?.company_name) {
+    const bY = billTo?.company_name ? block('BILL TO', billTo, M) : y;
+    const sY = shipTo?.company_name ? block('SHIP TO', shipTo, W / 2 + 4) : y;
+    y = Math.max(bY, sY) + 6;
+  }
 
   // Packages table
   pdf.setFontSize(8); pdf.setFont(undefined, 'bold');
@@ -201,11 +246,17 @@ function generatePackingListPDF(data) {
   // Marks & numbers
   if (pl.marks_numbers) {
     y += 6;
+    if (y > 270) { pdf.addPage(); y = 20; }
     pdf.setFontSize(8); pdf.setFont(undefined, 'bold'); pdf.setTextColor(60);
     pdf.text('MARKS & NUMBERS / NOTES', M, y); y += 5;
     pdf.setFont(undefined, 'normal'); pdf.setTextColor(0);
     pdf.text(pl.marks_numbers, M, y, { maxWidth: W - 2 * M });
+    y += 5;
   }
+
+  // Additional Information / custom fields (PRD §33-38) — lihat catatan
+  // di generateInvoicePDF() soal kenapa ini dipindah dari monkey-patch.
+  y = renderCustomFieldsBlock(pdf, y, pl.custom_fields, W, M);
 
   pdf.save(`${pl.packing_list_number}.pdf`);
 }
