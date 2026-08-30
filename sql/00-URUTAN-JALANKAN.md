@@ -34,6 +34,17 @@ sebelumnya (banyak pakai `references` / `ALTER TABLE ... ADD COLUMN`).
    dengan UUID user asli (lihat tabel `profiles`) sebelum dijalankan.
    Butuh `custom_field_definitions` sudah ada (dari langkah 5).
 
+7. **`10-FIX-admin-rls-policies.sql`**
+   Menambah policy INSERT/UPDATE `user_features` (dipakai toggle feature
+   admin) dan UPDATE `profiles` untuk role developer (dipakai tombol
+   Lock/Unlock user lain di admin.html). Tanpa ini, kedua tombol itu akan
+   selalu gagal dengan error "row-level security policy".
+
+8. **`11-bill-to-ship-to-and-marks-fix.sql`**
+   Menambah kolom `packing_lists.marks_numbers` yang kepakai di kode
+   (`packinglist.js`/`pdf.js`) tapi belum pernah dibuat di SQL manapun, plus
+   kolom opsional Bill To / Ship To di `invoices` & `packing_lists`.
+
 ---
 
 Catatan: tabel `customers` dan `suppliers` yang sempat ada di draft awal

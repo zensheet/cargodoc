@@ -5,8 +5,8 @@
 // ============================================
 
 const FEATURE_CATALOG = [
-  { key: 'invoice',               name: 'Commercial Invoice',     desc: 'Create professional export/import invoices with items, charges & totals.', href: '/invoice.html' },
-  { key: 'packing_list',          name: 'Packing List',           desc: 'Detail packages, weights & dimensions. Can be created from an invoice.',    href: '/packinglist.html' },
+  { key: 'invoice',               name: 'Commercial Invoice',     desc: 'Create professional export/import invoices with items, charges & totals.', href: '/invoice.html', historyHref: '/invoice-list.html' },
+  { key: 'packing_list',          name: 'Packing List',           desc: 'Detail packages, weights & dimensions. Can be created from an invoice.',    href: '/packinglist.html', historyHref: '/packinglist-list.html' },
   { key: 'purchase_order',        name: 'Purchase Order',         desc: 'Issue POs to suppliers. (Coming soon)',                                     href: null },
   { key: 'shipping_rate',         name: 'Shipping Rate Checker',  desc: 'Look up shipping rates. (Coming soon)',                                     href: null },
   { key: 'duty_tax',              name: 'Duty & Tax Calculator',  desc: 'Estimate duties & taxes. (Coming soon)',                                    href: null },
@@ -22,6 +22,7 @@ const FEATURE_CATALOG = [
   if (!session) return;
 
   const isDev = session.profile.role === 'developer';
+  if (isDev) document.getElementById('nav-admin-link').hidden = false;
 
   document.getElementById('user-name').textContent = session.profile.email;
   document.getElementById('welcome-name').textContent =
@@ -43,7 +44,10 @@ const FEATURE_CATALOG = [
         <span class="badge badge-active">Active</span>
         <h3>${f.name}</h3>
         <p>${f.desc}</p>
-        <a class="btn btn-primary" href="${f.href}">Open</a>`;
+        <div style="display:flex; gap:8px;">
+          <a class="btn btn-primary" href="${f.href}">Open</a>
+          ${f.historyHref ? `<a class="btn btn-secondary" href="${f.historyHref}">History</a>` : ''}
+        </div>`;
     } else {
       card.innerHTML = `
         <span class="badge badge-locked">${comingSoon ? 'Coming Soon' : 'Locked'}</span>
