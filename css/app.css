@@ -161,6 +161,17 @@ input:focus, select:focus, textarea:focus {
 .data-table th { background: #f9fafb; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: var(--text-muted); }
 .data-table tr:last-child td { border-bottom: none; }
 
+/* ---------- MODAL ---------- */
+/* Tampilan flex hanya aktif kalau atribut [hidden] TIDAK ada di elemen.
+   (Sebelumnya display:flex ditulis inline di HTML, yang menimpa
+   [hidden]{display:none} bawaan browser, jadi modal selalu muncul
+   meski atribut hidden aktif — inilah penyebab popup kosong.) */
+#modal-overlay:not([hidden]) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* ---------- RESPONSIVE ---------- */
 @media (max-width: 640px) {
   .app-main { padding: 14px; }
