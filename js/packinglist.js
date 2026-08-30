@@ -74,6 +74,21 @@ async function loadPackingListForEdit(id) {
   set('f-receiver_phone', pl.receiver_phone);
   set('f-receiver_email', pl.receiver_email);
 
+  set('f-bill_to_name', pl.bill_to_name);
+  set('f-bill_to_pic', pl.bill_to_pic);
+  set('f-bill_to_address', pl.bill_to_address);
+  set('f-bill_to_city', pl.bill_to_city);
+  set('f-bill_to_country', pl.bill_to_country);
+  set('f-bill_to_phone', pl.bill_to_phone);
+  set('f-bill_to_email', pl.bill_to_email);
+  set('f-ship_to_name', pl.ship_to_name);
+  set('f-ship_to_pic', pl.ship_to_pic);
+  set('f-ship_to_address', pl.ship_to_address);
+  set('f-ship_to_city', pl.ship_to_city);
+  set('f-ship_to_country', pl.ship_to_country);
+  set('f-ship_to_phone', pl.ship_to_phone);
+  set('f-ship_to_email', pl.ship_to_email);
+
   const tbody = document.querySelector('#packages-table tbody');
   tbody.innerHTML = '';
   if (packages?.length) {
@@ -97,6 +112,8 @@ async function loadPackingListForEdit(id) {
   }
 
   window.EDIT_DOC_CUSTOM_FIELDS = pl.custom_fields || null;
+  // FIX: lihat catatan sama di js/invoice.js loadInvoiceForEdit().
+  if (typeof renderCustomFieldsUI === 'function') renderCustomFieldsUI();
 
   recalcTotals();
 }
@@ -173,6 +190,20 @@ async function loadFromInvoice() {
   set('f-receiver_country', inv.receiver_country);
   set('f-receiver_phone',   inv.receiver_phone);
   set('f-receiver_email',   inv.receiver_email);
+  set('f-bill_to_name',     inv.bill_to_name);
+  set('f-bill_to_pic',      inv.bill_to_pic);
+  set('f-bill_to_address',  inv.bill_to_address);
+  set('f-bill_to_city',     inv.bill_to_city);
+  set('f-bill_to_country',  inv.bill_to_country);
+  set('f-bill_to_phone',    inv.bill_to_phone);
+  set('f-bill_to_email',    inv.bill_to_email);
+  set('f-ship_to_name',     inv.ship_to_name);
+  set('f-ship_to_pic',      inv.ship_to_pic);
+  set('f-ship_to_address',  inv.ship_to_address);
+  set('f-ship_to_city',     inv.ship_to_city);
+  set('f-ship_to_country',  inv.ship_to_country);
+  set('f-ship_to_phone',    inv.ship_to_phone);
+  set('f-ship_to_email',    inv.ship_to_email);
 
   // Items invoice -> baris packages (satu item = satu package row, editable)
   const tbody = document.querySelector('#packages-table tbody');
@@ -306,6 +337,18 @@ function collectPackingList() {
       country: v('f-receiver_country'), phone: v('f-receiver_phone'),
       email: v('f-receiver_email'),
     },
+    billTo: {
+      company_name: v('f-bill_to_name'), pic: v('f-bill_to_pic'),
+      address: v('f-bill_to_address'), city: v('f-bill_to_city'),
+      country: v('f-bill_to_country'), phone: v('f-bill_to_phone'),
+      email: v('f-bill_to_email'),
+    },
+    shipTo: {
+      company_name: v('f-ship_to_name'), pic: v('f-ship_to_pic'),
+      address: v('f-ship_to_address'), city: v('f-ship_to_city'),
+      country: v('f-ship_to_country'), phone: v('f-ship_to_phone'),
+      email: v('f-ship_to_email'),
+    },
     packages,
   };
 }
@@ -352,6 +395,20 @@ async function persistPackingList(data, status) {
     receiver_country:  data.receiver.country,
     receiver_phone:    data.receiver.phone,
     receiver_email:    data.receiver.email,
+    bill_to_name:     data.billTo.company_name || null,
+    bill_to_pic:      data.billTo.pic || null,
+    bill_to_address:  data.billTo.address || null,
+    bill_to_city:     data.billTo.city || null,
+    bill_to_country:  data.billTo.country || null,
+    bill_to_phone:    data.billTo.phone || null,
+    bill_to_email:    data.billTo.email || null,
+    ship_to_name:     data.shipTo.company_name || null,
+    ship_to_pic:      data.shipTo.pic || null,
+    ship_to_address:  data.shipTo.address || null,
+    ship_to_city:     data.shipTo.city || null,
+    ship_to_country:  data.shipTo.country || null,
+    ship_to_phone:    data.shipTo.phone || null,
+    ship_to_email:    data.shipTo.email || null,
   };
 
   let saved;

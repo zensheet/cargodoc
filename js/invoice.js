@@ -93,6 +93,21 @@ async function loadInvoiceForEdit(id) {
   set('f-receiver_phone', inv.receiver_phone);
   set('f-receiver_email', inv.receiver_email);
 
+  set('f-bill_to_name', inv.bill_to_name);
+  set('f-bill_to_pic', inv.bill_to_pic);
+  set('f-bill_to_address', inv.bill_to_address);
+  set('f-bill_to_city', inv.bill_to_city);
+  set('f-bill_to_country', inv.bill_to_country);
+  set('f-bill_to_phone', inv.bill_to_phone);
+  set('f-bill_to_email', inv.bill_to_email);
+  set('f-ship_to_name', inv.ship_to_name);
+  set('f-ship_to_pic', inv.ship_to_pic);
+  set('f-ship_to_address', inv.ship_to_address);
+  set('f-ship_to_city', inv.ship_to_city);
+  set('f-ship_to_country', inv.ship_to_country);
+  set('f-ship_to_phone', inv.ship_to_phone);
+  set('f-ship_to_email', inv.ship_to_email);
+
   // Items
   const tbody = document.querySelector('#items-table tbody');
   tbody.innerHTML = '';
@@ -113,6 +128,13 @@ async function loadInvoiceForEdit(id) {
 
   // Custom fields (diisi custom-fields.js kalau section-nya sudah ke-render)
   window.EDIT_DOC_CUSTOM_FIELDS = inv.custom_fields || null;
+  // FIX: custom-fields.js merender section ini secara independen/async
+  // (timing sendiri, tidak menunggu invoice.js). Kalau load invoice ini
+  // (network call di atas) lebih lambat dari render pertama custom-fields.js,
+  // nilai custom field yang sudah tersimpan akan terlewat ke-prefill.
+  // Re-trigger render di sini supaya prefill selalu kepakai begitu data
+  // dokumennya sudah siap, terlepas dari urutan timing keduanya.
+  if (typeof renderCustomFieldsUI === 'function') renderCustomFieldsUI();
 
   recalc();
 }
@@ -251,6 +273,24 @@ function collectInvoice() {
       phone: v('f-receiver_phone'),
       email: v('f-receiver_email'),
     },
+    billTo: {
+      company_name: v('f-bill_to_name'),
+      pic: v('f-bill_to_pic'),
+      address: v('f-bill_to_address'),
+      city: v('f-bill_to_city'),
+      country: v('f-bill_to_country'),
+      phone: v('f-bill_to_phone'),
+      email: v('f-bill_to_email'),
+    },
+    shipTo: {
+      company_name: v('f-ship_to_name'),
+      pic: v('f-ship_to_pic'),
+      address: v('f-ship_to_address'),
+      city: v('f-ship_to_city'),
+      country: v('f-ship_to_country'),
+      phone: v('f-ship_to_phone'),
+      email: v('f-ship_to_email'),
+    },
     items,
   };
 }
@@ -295,6 +335,20 @@ async function persistInvoice(data, status) {
     receiver_country:  data.receiver.country,
     receiver_phone:    data.receiver.phone,
     receiver_email:    data.receiver.email,
+    bill_to_name:     data.billTo.company_name || null,
+    bill_to_pic:      data.billTo.pic || null,
+    bill_to_address:  data.billTo.address || null,
+    bill_to_city:     data.billTo.city || null,
+    bill_to_country:  data.billTo.country || null,
+    bill_to_phone:    data.billTo.phone || null,
+    bill_to_email:    data.billTo.email || null,
+    ship_to_name:     data.shipTo.company_name || null,
+    ship_to_pic:      data.shipTo.pic || null,
+    ship_to_address:  data.shipTo.address || null,
+    ship_to_city:     data.shipTo.city || null,
+    ship_to_country:  data.shipTo.country || null,
+    ship_to_phone:    data.shipTo.phone || null,
+    ship_to_email:    data.shipTo.email || null,
     invoice_number: data.invoice.invoice_number
       || await nextInvoiceNumber(), // mode AUTO -> generate saat save
   };

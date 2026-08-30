@@ -91,6 +91,45 @@
         </div>
       </section>
 
+      <!-- ===== BILL TO / SHIP TO ===== -->
+      <section class="feature-card" style="margin-bottom:20px;">
+        <h3>Bill To / Ship To <small style="color:var(--text-muted); font-weight:400;">(optional — isi hanya kalau beda dari Shipper/Receiver)</small></h3>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+          <div>
+            <h4>Bill To</h4>
+            <label>Company Name</label><input id="f-bill_to_name">
+            <label>PIC (Person in Charge)</label><input id="f-bill_to_pic">
+            <label>Address</label><input id="f-bill_to_address">
+            <label>City / Country</label>
+            <div style="display:flex; gap:8px;">
+              <input id="f-bill_to_city" placeholder="City">
+              <input id="f-bill_to_country" placeholder="Country">
+            </div>
+            <label>Phone / Email</label>
+            <div style="display:flex; gap:8px;">
+              <input id="f-bill_to_phone" placeholder="Phone">
+              <input id="f-bill_to_email" type="email" placeholder="Email">
+            </div>
+          </div>
+          <div>
+            <h4>Ship To</h4>
+            <label>Company Name</label><input id="f-ship_to_name">
+            <label>PIC (Person in Charge)</label><input id="f-ship_to_pic">
+            <label>Address</label><input id="f-ship_to_address">
+            <label>City / Country</label>
+            <div style="display:flex; gap:8px;">
+              <input id="f-ship_to_city" placeholder="City">
+              <input id="f-ship_to_country" placeholder="Country">
+            </div>
+            <label>Phone / Email</label>
+            <div style="display:flex; gap:8px;">
+              <input id="f-ship_to_phone" placeholder="Phone">
+              <input id="f-ship_to_email" type="email" placeholder="Email">
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- ===== PACKAGES ===== -->
       <section class="feature-card" style="margin-bottom:20px;">
         <h3>Packages</h3>
