@@ -405,7 +405,8 @@ async function saveAndDownload() {
   btn.disabled = true; btn.textContent = EDIT_ID ? 'Updating...' : 'Saving...';
   try {
     const saved = await persistInvoice(data, 'final');
-    generateInvoicePDF({ ...data, invoice: saved }); // js/pdf.js
+    const branding = await getBranding(); // js/branding.js
+    await generateInvoicePDF({ ...data, invoice: saved, branding }); // js/pdf.js
     alert(EDIT_ID ? '✅ Invoice updated & PDF downloaded.' : '✅ Invoice saved & PDF downloaded.');
     location.href = '/invoice-list.html';
   } catch (e) {

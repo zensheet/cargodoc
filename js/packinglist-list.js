@@ -157,7 +157,8 @@ async function downloadPl(id) {
     .order('created_at');
   if (!pl) return alert('Packing list not found.');
 
-  generatePackingListPDF({
+  const branding = await getBranding(); // js/branding.js
+  await generatePackingListPDF({
     packing_list: pl,
     shipper: {
       company_name: pl.shipper_name, pic: pl.shipper_pic,
@@ -170,6 +171,7 @@ async function downloadPl(id) {
       country: pl.receiver_country, phone: pl.receiver_phone, email: pl.receiver_email,
     },
     packages: packages || [],
+    branding,
   });
 }
 

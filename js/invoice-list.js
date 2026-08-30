@@ -155,7 +155,8 @@ async function downloadInvoice(id) {
     .from('invoice_items').select('*').eq('invoice_id', id).order('created_at');
   if (!inv) return alert('Invoice not found.');
 
-  generateInvoicePDF({
+  const branding = await getBranding(); // js/branding.js
+  await generateInvoicePDF({
     invoice: inv,
     shipper: {
       company_name: inv.shipper_name, pic: inv.shipper_pic,
@@ -168,6 +169,7 @@ async function downloadInvoice(id) {
       country: inv.receiver_country, phone: inv.receiver_phone, email: inv.receiver_email,
     },
     items: items || [],
+    branding,
   });
 }
 

@@ -76,14 +76,14 @@ async function loadUsers() {
   for (const u of users || []) {
     const tr = document.createElement('tr');
 
-    const badges = (features || []).map(f => {
+    const badges = `<div class="feature-check-list">` + (features || []).map(f => {
       const row = (uf || []).find(x => x.user_id === u.id && x.feature_id === f.id);
       const on = row?.enabled === true;
-      return `<label style="font-size:12px; display:block; cursor:pointer;">
+      return `<label>
         <input type="checkbox" ${on ? 'checked' : ''} ${f.active ? '' : 'disabled'}
           onchange="toggleFeature('${u.id}','${f.id}', this.checked)">
         ${f.feature_name}</label>`;
-    }).join('');
+    }).join('') + `</div>`;
 
     tr.innerHTML = `
       <td>${u.email}</td>

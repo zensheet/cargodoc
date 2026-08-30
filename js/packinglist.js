@@ -462,7 +462,8 @@ async function saveAndDownload() {
   btn.disabled = true; btn.textContent = EDIT_PL_ID ? 'Updating...' : 'Saving...';
   try {
     const saved = await persistPackingList(data, 'final');
-    generatePackingListPDF({ packing_list: saved, ...data });
+    const branding = await getBranding(); // js/branding.js
+    await generatePackingListPDF({ packing_list: saved, ...data, branding });
     alert(EDIT_PL_ID ? '✅ Packing list updated & PDF downloaded.' : '✅ Packing list saved & PDF downloaded.');
     location.href = '/packinglist-list.html';
   } catch (e) {

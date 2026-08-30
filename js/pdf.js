@@ -1,22 +1,47 @@
 // ============================================
+// HEADER (dipakai invoice & packing list) — warna & logo dari branding
+// per user (js/branding.js -> getBranding()). branding bisa undefined
+// (mis. dipanggil dari kode lama yang belum di-update) — tetap fallback
+// ke warna biru default & tanpa logo, PDF tidak pernah gagal gara-gara ini.
+// ============================================
+async function drawDocHeader(pdf, title, docNumber, docDate, branding, W, M) {
+  const barH = 28;
+  const [r, g, b] = hexToRgb(branding?.header_color);
+  pdf.setFillColor(r, g, b);
+  pdf.rect(0, 0, W, barH, 'F');
+  pdf.setTextColor(255);
+  pdf.setFontSize(18); pdf.setFont(undefined, 'bold');
+  pdf.text(title, M, 13);
+  pdf.setFontSize(9); pdf.setFont(undefined, 'normal');
+  pdf.text(`No: ${docNumber}    Date: ${docDate || '—'}`, M, 20);
+
+  // Logo (kanan atas bar), kalau user sudah upload
+  const logoDataUrl = await fetchLogoDataUrl(branding?.logo_url);
+  if (logoDataUrl) {
+    try {
+      const dims = await loadImageDimensions(logoDataUrl);
+      const maxW = 34, maxH = 18;
+      let w = maxW, h = (dims.height / dims.width) * w;
+      if (h > maxH) { h = maxH; w = (dims.width / dims.height) * h; }
+      pdf.addImage(logoDataUrl, W - M - w, (barH - h) / 2, w, h);
+    } catch {
+      // Gagal render logo (format tidak didukung dsb) — abaikan saja,
+      // header tetap tampil dengan warna & teks di atas.
+    }
+  }
+
+  return barH + 8;
+}
+
+// ============================================
 // COMMERCIAL INVOICE PDF
 // ============================================
 
-function generateInvoicePDF(data) {
-  const { invoice: inv, shipper, receiver, billTo, shipTo, items } = data;
+async function generateInvoicePDF(data) {
+  const { invoice: inv, shipper, receiver, billTo, shipTo, items, branding } = data;
   const pdf = new jspdf.jsPDF({ unit: 'mm', format: 'a4' });
   const W = 210, M = 14;
-  let y = 0;
-
-  // Header
-  pdf.setFillColor(26, 86, 219);
-  pdf.rect(0, 0, W, 28, 'F');
-  pdf.setTextColor(255);
-  pdf.setFontSize(18); pdf.setFont(undefined, 'bold');
-  pdf.text('COMMERCIAL INVOICE', M, 13);
-  pdf.setFontSize(9); pdf.setFont(undefined, 'normal');
-  pdf.text(`No: ${inv.invoice_number}    Date: ${inv.invoice_date || '—'}`, M, 20);
-  y = 36;
+  let y = await drawDocHeader(pdf, 'COMMERCIAL INVOICE', inv.invoice_number, inv.invoice_date, branding, W, M);
 
   // Shipper / Receiver (Empty Field Rule)
   const block = (title, obj, x) => {
@@ -153,21 +178,11 @@ function renderCustomFieldsBlock(pdf, y, customFields, W, M) {
 // PACKING LIST PDF
 // ============================================
 
-function generatePackingListPDF(data) {
-  const { packing_list: pl, shipper, receiver, billTo, shipTo, packages } = data;
+async function generatePackingListPDF(data) {
+  const { packing_list: pl, shipper, receiver, billTo, shipTo, packages, branding } = data;
   const pdf = new jspdf.jsPDF({ unit: 'mm', format: 'a4' });
   const W = 210, M = 14;
-  let y = 0;
-
-  // Header
-  pdf.setFillColor(26, 86, 219);
-  pdf.rect(0, 0, W, 28, 'F');
-  pdf.setTextColor(255);
-  pdf.setFontSize(18); pdf.setFont(undefined, 'bold');
-  pdf.text('PACKING LIST', M, 13);
-  pdf.setFontSize(9); pdf.setFont(undefined, 'normal');
-  pdf.text(`No: ${pl.packing_list_number}    Date: ${pl.packing_list_date || '—'}`, M, 20);
-  y = 36;
+  let y = await drawDocHeader(pdf, 'PACKING LIST', pl.packing_list_number, pl.packing_list_date, branding, W, M);
 
   // Shipper / Receiver (Empty Field Rule)
   const block = (title, obj, x) => {

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Document Branding — Invoice Shipping Generator</title>
+<link rel="stylesheet" href="css/app.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+  <header class="app-header">
+    <div class="brand"><a href="/app.html" style="text-decoration:none;color:inherit;">📦 ISG</a> / Document Branding</div>
+    <div class="user-info">
+      <span id="user-name"></span>
+      <a href="/app.html" class="btn btn-secondary btn-sm">Dashboard</a>
+      <button class="btn btn-secondary btn-sm" onclick="logout()">Logout</button>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <h2>Document Branding</h2>
+    <p style="color:var(--text-muted); margin:4px 0 20px;">
+      Atur warna kop surat & logo perusahaan Anda. Perubahan ini otomatis dipakai
+      setiap kali Anda generate PDF Invoice atau Packing List.
+    </p>
+
+    <div class="feature-card" style="max-width:560px;">
+
+      <!-- ===== PREVIEW ===== -->
+      <div id="header-preview" style="border-radius:var(--radius); padding:18px 20px; margin-bottom:22px; background:#1a56db; color:#fff; display:flex; align-items:center; justify-content:space-between; min-height:64px;">
+        <div>
+          <div style="font-size:16px; font-weight:700;">COMMERCIAL INVOICE</div>
+          <div style="font-size:11px; opacity:.9;">No: INV-2026-00001&nbsp;&nbsp;&nbsp;Date: 2026-08-30</div>
+        </div>
+        <img id="logo-preview-img" src="" alt="Logo preview" hidden style="max-height:44px; max-width:120px; background:#fff; padding:4px; border-radius:4px;">
+      </div>
+
+      <!-- ===== HEADER COLOR ===== -->
+      <div style="margin-bottom:20px;">
+        <label for="b-color">Header Color</label>
+        <div style="display:flex; gap:10px; align-items:center;">
+          <input type="color" id="b-color" value="#1a56db" style="width:56px; height:38px; padding:2px; cursor:pointer;">
+          <input type="text" id="b-color-hex" value="#1a56db" placeholder="#1a56db" style="max-width:140px;">
+          <button class="btn btn-secondary btn-sm" type="button" onclick="resetColor()">Reset to Default</button>
+        </div>
+        <small style="color:var(--text-muted);">Warna latar belakang kop surat (header) di PDF.</small>
+      </div>
+
+      <!-- ===== LOGO ===== -->
+      <div style="margin-bottom:6px;">
+        <label for="b-logo-file">Company Logo</label>
+        <input type="file" id="b-logo-file" accept="image/png,image/jpeg,image/svg+xml,image/webp">
+        <small style="color:var(--text-muted); display:block; margin-top:4px;">
+          PNG/JPG/WEBP/SVG, maks 1&nbsp;MB. Tampil di pojok kanan atas kop surat PDF.
+        </small>
+        <button class="btn btn-danger btn-sm" type="button" id="b-logo-remove" style="margin-top:8px;" onclick="removeLogo()" hidden>
+          Remove Logo
+        </button>
+      </div>
+
+      <div style="margin-top:20px; display:flex; gap:10px;">
+        <button class="btn btn-primary" id="b-save" onclick="saveBranding()">Save Changes</button>
+      </div>
+      <div id="b-status" style="margin-top:12px; font-size:14px;"></div>
+    </div>
+  </main>
+
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/guard.js"></script>
+  <script src="js/branding.js"></script>
+  <script src="js/branding-settings.js"></script>
+</body>
+</html>

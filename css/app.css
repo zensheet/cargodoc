@@ -161,6 +161,20 @@ input:focus, select:focus, textarea:focus {
 .data-table th { background: #f9fafb; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: var(--text-muted); }
 .data-table tr:last-child td { border-bottom: none; }
 
+/* Varian compact — dipakai tabel Users di Admin, supaya kolom Features
+   (checklist banyak item) tidak bikin baris jadi tinggi & berantakan. */
+.data-table.compact th, .data-table.compact td {
+  padding: 8px 12px; font-size: 13px; vertical-align: top;
+}
+.feature-check-list {
+  display: flex; flex-wrap: wrap; gap: 4px 12px; max-width: 280px;
+}
+.feature-check-list label {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12px; cursor: pointer; white-space: nowrap;
+}
+.feature-check-list input[type="checkbox"] { margin: 0; }
+
 /* ---------- MODAL ---------- */
 /* Tampilan flex hanya aktif kalau atribut [hidden] TIDAK ada di elemen.
    (Sebelumnya display:flex ditulis inline di HTML, yang menimpa
