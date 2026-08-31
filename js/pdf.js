@@ -543,3 +543,127 @@ async function generatePackingListPDF(data) {
     pdf.save(`${pl.packing_list_number}.pdf`);
   }
 }
+
+// ============================================
+// SHIPPING INSTRUCTION (SI) PDF — instruksi Shipper ke Forwarder/Carrier.
+// Tiga pihak (Shipper / Consignee / Notify Party) + detail booking/routing
+// + cargo lines (bukan harga -- SI tidak menampilkan value barang).
+// ============================================
+
+async function generateShippingInstructionPDF(data) {
+  const { shipping_instruction: si, shipper, consignee, notifyParty, items, branding } = data;
+  const pdf = new jspdf.jsPDF({ unit: 'mm', format: 'a4' });
+  const W = 210, M = 14;
+  let y = await drawDocHeader(pdf, 'SHIPPING INSTRUCTION', si.si_number, si.si_date, branding, W, M);
+
+  const block = (title, obj, x, w = 62) => {
+    let yy = y;
+    pdf.setTextColor(60); pdf.setFontSize(8); pdf.setFont(undefined, 'bold');
+    pdf.text(title, x, yy); yy += 5;
+    pdf.setFont(undefined, 'normal'); pdf.setFontSize(8.5); pdf.setTextColor(0);
+    const LABELS = {
+      company_name: 'Company', pic: 'PIC', address: 'Address',
+      city: 'City', country: 'Country', phone: 'Phone', email: 'Email',
+    };
+    Object.entries(obj).forEach(([key, val]) => {
+      if (val) { pdf.text(`${LABELS[key] || key}: ${val}`, x, yy, { maxWidth: w }); yy += 4.6; }
+    });
+    return yy;
+  };
+  // Tiga kolom: Shipper / Consignee / Notify Party (Empty Field Rule —
+  // Notify Party kolom kanan dilewati kalau kosong)
+  const colW = (W - 2 * M) / 3;
+  const y1 = block('SHIPPER', shipper, M, colW - 6);
+  const y2 = block('CONSIGNEE', consignee, M + colW, colW - 6);
+  const y3 = notifyParty?.company_name ? block('NOTIFY PARTY', notifyParty, M + colW * 2, colW - 6) : y;
+  y = Math.max(y1, y2, y3) + 6;
+
+  // Booking / routing / terms (Empty Field Rule)
+  const details = [
+    ['Booking No.', si.booking_number], ['Carrier', si.carrier_name],
+    ['Vessel/Voyage', si.vessel_voyage], ['Reference', si.reference_number],
+    ['Mode of Transport', si.mode_of_transport], ['Shipment Mode', si.shipment_mode],
+    ['Container Type', si.container_type],
+    ['No. of Containers', si.container_count],
+    ['Port of Loading', si.port_of_loading], ['Port of Discharge', si.port_of_discharge],
+    ['Place of Delivery', si.place_of_delivery], ['Final Destination', si.final_destination],
+    ['Freight Terms', si.freight_terms], ['Incoterms', si.incoterms],
+    ['B/L Type', si.bl_type], ['No. of B/L Originals', si.bl_originals_count],
+  ].filter(([, v]) => v !== null && v !== undefined && v !== '');
+  if (details.length) {
+    pdf.setFontSize(8);
+    const dColW = (W - 2 * M) / 2;
+    details.forEach(([label, val], i) => {
+      const col = i % 2, row = Math.floor(i / 2);
+      const x = M + col * dColW;
+      const yy = y + row * 5;
+      pdf.setFont(undefined, 'bold'); pdf.setTextColor(60);
+      pdf.text(`${label}:`, x, yy);
+      pdf.setFont(undefined, 'normal'); pdf.setTextColor(0);
+      pdf.text(String(val), x + 38, yy, { maxWidth: dColW - 40 });
+    });
+    y += Math.ceil(details.length / 2) * 5 + 6;
+  }
+
+  // Cargo table (tanpa harga -- SI bukan dokumen komersial)
+  pdf.setFontSize(8); pdf.setFont(undefined, 'bold');
+  const cols = [
+    { label: 'DESCRIPTION', x: M, w: 56 },
+    { label: 'HS CODE', x: M + 58, w: 18 },
+    { label: 'PKGS', x: 116, w: 12, align: 'right' },
+    { label: 'PKG TYPE', x: 130, w: 20 },
+    { label: 'QTY', x: 152, w: 14, align: 'right' },
+    { label: 'G.WEIGHT (KG)', x: 168, w: 18, align: 'right' },
+    { label: 'CBM', x: W - M - 12, w: 12, align: 'right' },
+  ];
+  pdf.setFillColor(240, 243, 248);
+  pdf.rect(M, y - 4, W - 2 * M, 7, 'F');
+  cols.forEach(c => pdf.text(c.label, c.x, y, { align: c.align || 'left' }));
+  y += 8;
+
+  pdf.setFont(undefined, 'normal'); pdf.setFontSize(8);
+  let totalPkgs = 0, totalGross = 0, totalCbm = 0;
+  (items || []).forEach(it => {
+    if (y > 255) { pdf.addPage(); y = 20; }
+    totalPkgs += it.package_count || 0;
+    totalGross += it.gross_weight || 0;
+    totalCbm += it.measurement || 0;
+    const vals = [
+      it.description || '', it.hs_code || '',
+      it.package_count ? String(it.package_count) : '', it.package_type || '',
+      it.quantity ? `${it.quantity} ${it.unit || ''}`.trim() : '',
+      it.gross_weight != null && it.gross_weight !== 0 ? it.gross_weight.toFixed(2) : '',
+      it.measurement != null && it.measurement !== 0 ? it.measurement.toFixed(3) : '',
+    ];
+    cols.forEach((c, i) => pdf.text(vals[i], c.x, y, { align: c.align || 'left', maxWidth: c.w }));
+    y += 5.5;
+    pdf.setDrawColor(230); pdf.line(M, y - 3, W - M, y - 3);
+  });
+
+  // Totals
+  y += 4;
+  if (y > 280) { pdf.addPage(); y = 20; }
+  pdf.setFont(undefined, 'bold'); pdf.setTextColor(0); pdf.setFontSize(9);
+  pdf.text(
+    `Total: ${totalPkgs} pkgs   |   ${totalGross.toFixed(2)} kg   |   ${totalCbm.toFixed(3)} CBM`,
+    W - M, y, { align: 'right' }
+  );
+  y += 8;
+
+  // Special instructions
+  if (si.notes) {
+    if (y > 270) { pdf.addPage(); y = 20; }
+    pdf.setFontSize(8); pdf.setFont(undefined, 'bold'); pdf.setTextColor(60);
+    pdf.text('SPECIAL INSTRUCTIONS', M, y); y += 5;
+    pdf.setFont(undefined, 'normal'); pdf.setTextColor(0);
+    pdf.text(si.notes, M, y, { maxWidth: W - 2 * M });
+    y += 5;
+  }
+
+  if (data.watermark) {
+    applyWatermarkToAllPages(pdf, W, 297);
+    pdf.save(`PREVIEW-${si.si_number || 'shipping-instruction'}.pdf`);
+  } else {
+    pdf.save(`${si.si_number}.pdf`);
+  }
+}

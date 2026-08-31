@@ -101,6 +101,24 @@ sebelumnya (banyak pakai `references` / `ALTER TABLE ... ADD COLUMN`).
     `insert`, bukan `update`. Sama seperti `purchase_order`, TIDAK
     auto-enable untuk self-signup — admin enable manual per customer.
 
+15. **`19-guest-mode-po-so.sql`**
+    Purchase Order & Sales Order ikut dibuka untuk guest mode (belum
+    login) — sama seperti Commercial Invoice & Packing List. Butuh
+    langkah 13 & 14 sudah dijalankan.
+
+16. **`20-shipping-instruction.sql`**
+    Dokumen shipping baru (roadmap: SI → DN → Shipping Label → DO).
+    Tabel `shipping_instructions` + `shipping_instruction_items`.
+    Berbeda dari PO/SO (yang membeli/menjual barang dengan harga & total),
+    SI adalah instruksi ke Forwarder/Carrier — tiga pihak (Shipper,
+    Consignee, Notify Party), detail booking/routing/B-L, dan cargo lines
+    TANPA harga (bukan dokumen komersial). RLS mengikuti pola persis
+    `purchase_orders`/`sales_orders` (butuh langkah 13 & 14 sudah
+    dijalankan). Feature `shipping_instruction` BELUM PERNAH ada baris-nya
+    di tabel `features` — jadi `insert`, bukan `update`, `active=true`
+    langsung. TIDAK guest mode & TIDAK auto-enable untuk self-signup —
+    admin enable manual per customer di `admin.html`.
+
 ---
 
 Catatan: tabel `customers` dan `suppliers` yang sempat ada di draft awal

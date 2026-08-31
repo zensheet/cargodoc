@@ -16,6 +16,7 @@ const FEATURE_CATALOG = [
     href: '/invoice.html?type=proforma', historyHref: '/invoice-list.html?type=proforma' },
   { key: 'purchase_order',        name: 'Purchase Order',         desc: 'Issue POs to suppliers with itemized goods, terms & totals.',                href: '/purchase-order.html', historyHref: '/purchase-order-list.html' },
   { key: 'sales_order',           name: 'Sales Order',            desc: 'Confirm orders from customers before converting to invoice.',               href: '/sales-order.html', historyHref: '/sales-order-list.html' },
+  { key: 'shipping_instruction',  name: 'Shipping Instruction',   desc: 'Instruct your forwarder/carrier on booking, routing & B/L details.',        href: '/shipping-instruction.html', historyHref: '/shipping-instruction-list.html' },
   { key: 'shipping_rate',         name: 'Shipping Rate Checker',  desc: 'Look up shipping rates. (Coming soon)',                                     href: null },
   { key: 'duty_tax',              name: 'Duty & Tax Calculator',  desc: 'Estimate duties & taxes. (Coming soon)',                                    href: null },
   { key: 'quotation',             name: 'Quotation',              desc: 'Send price quotations to customers. (Coming soon)',                         href: null },
