@@ -119,6 +119,21 @@ sebelumnya (banyak pakai `references` / `ALTER TABLE ... ADD COLUMN`).
     langsung. TIDAK guest mode & TIDAK auto-enable untuk self-signup —
     admin enable manual per customer di `admin.html`.
 
+17. **`21-delivery-note.sql`**
+    Dokumen shipping berikutnya (roadmap: SI → **DN** → Shipping Label →
+    DO). Tabel `delivery_notes` + `delivery_note_items`. DN adalah bukti
+    serah-terima barang secara fisik (dibawa bersama barang, ditandatangani
+    penerima) — field-nya: From/Deliver To, info kendaraan (driver, nomor
+    kendaraan), items TANPA harga (sama seperti Shipping Instruction —
+    bukan dokumen komersial), dan kolom opsional "Proof of Delivery"
+    (`received_by_name`, `received_date`) yang biasanya diisi manual
+    setelah barang sampai. RLS mengikuti pola persis
+    `shipping_instructions` (butuh langkah 16 sudah dijalankan). Feature
+    `delivery_note` BELUM PERNAH ada baris-nya di tabel `features` — jadi
+    `insert`, bukan `update`, `active=true` langsung. TIDAK guest mode &
+    TIDAK auto-enable untuk self-signup — admin enable manual per
+    customer di `admin.html`.
+
 ---
 
 Catatan: tabel `customers` dan `suppliers` yang sempat ada di draft awal

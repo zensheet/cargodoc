@@ -667,3 +667,133 @@ async function generateShippingInstructionPDF(data) {
     pdf.save(`${si.si_number}.pdf`);
   }
 }
+
+// ============================================
+// DELIVERY NOTE (DN) PDF — bukti serah-terima barang secara fisik.
+// Layout mirip Purchase Order (From / Deliver To + items) tapi TANPA
+// harga/total (bukan dokumen komersial, sama seperti Shipping
+// Instruction) + blok tanda tangan (Prepared by / Driver / Received by)
+// di bagian bawah -- inti dari fungsi sebuah delivery note.
+// ============================================
+
+async function generateDeliveryNotePDF(data) {
+  const { delivery_note: dn, from, deliverTo, items, branding } = data;
+  const pdf = new jspdf.jsPDF({ unit: 'mm', format: 'a4' });
+  const W = 210, M = 14;
+  let y = await drawDocHeader(pdf, 'DELIVERY NOTE', dn.dn_number, dn.dn_date, branding, W, M);
+
+  const block = (title, obj, x) => {
+    let yy = y;
+    pdf.setTextColor(60); pdf.setFontSize(8); pdf.setFont(undefined, 'bold');
+    pdf.text(title, x, yy); yy += 5;
+    pdf.setFont(undefined, 'normal'); pdf.setFontSize(9); pdf.setTextColor(0);
+    const LABELS = {
+      company_name: 'Company', pic: 'PIC', address: 'Address',
+      city: 'City', country: 'Country', phone: 'Phone', email: 'Email',
+    };
+    Object.entries(obj).forEach(([key, val]) => {
+      if (val) { pdf.text(`${LABELS[key] || key}: ${val}`, x, yy, { maxWidth: 80 }); yy += 5; }
+    });
+    return yy;
+  };
+  const yL = block('FROM', from, M);
+  const yR = block('DELIVER TO', deliverTo, W / 2 + 4);
+  y = Math.max(yL, yR) + 6;
+
+  // Delivery details (Empty Field Rule)
+  const details = [
+    ['Reference', dn.reference_number],
+    ['Driver', dn.driver_name],
+    ['Vehicle Number', dn.vehicle_number],
+    ['Vehicle Type', dn.vehicle_type],
+  ].filter(([, v]) => v);
+  if (details.length) {
+    pdf.setFontSize(8);
+    const colW = (W - 2 * M) / 2;
+    details.forEach(([label, val], i) => {
+      const col = i % 2, row = Math.floor(i / 2);
+      const x = M + col * colW;
+      const yy = y + row * 5;
+      pdf.setFont(undefined, 'bold'); pdf.setTextColor(60);
+      pdf.text(`${label}:`, x, yy);
+      pdf.setFont(undefined, 'normal'); pdf.setTextColor(0);
+      pdf.text(String(val), x + 32, yy, { maxWidth: colW - 34 });
+    });
+    y += Math.ceil(details.length / 2) * 5 + 6;
+  }
+
+  // Items table (tanpa harga -- DN bukan dokumen komersial)
+  pdf.setFontSize(8); pdf.setFont(undefined, 'bold');
+  const cols = [
+    { label: 'DESCRIPTION', x: M, w: 74 },
+    { label: 'SKU', x: M + 76, w: 24 },
+    { label: 'PACKAGES', x: 140, w: 20, align: 'right' },
+    { label: 'PKG TYPE', x: 164, w: 20 },
+    { label: 'QTY', x: W - M - 20, w: 20, align: 'right' },
+  ];
+  pdf.setFillColor(240, 243, 248);
+  pdf.rect(M, y - 4, W - 2 * M, 7, 'F');
+  cols.forEach(c => pdf.text(c.label, c.x, y, { align: c.align || 'left' }));
+  y += 8;
+
+  pdf.setFont(undefined, 'normal'); pdf.setFontSize(8);
+  let totalPkgs = 0;
+  (items || []).forEach(it => {
+    if (y > 240) { pdf.addPage(); y = 20; }
+    totalPkgs += it.package_count || 0;
+    const vals = [
+      it.description || '', it.sku || '',
+      it.package_count ? String(it.package_count) : '', it.package_type || '',
+      it.quantity ? `${it.quantity} ${it.unit || ''}`.trim() : '',
+    ];
+    cols.forEach((c, i) => pdf.text(vals[i], c.x, y, { align: c.align || 'left', maxWidth: c.w }));
+    y += 5.5;
+    pdf.setDrawColor(230); pdf.line(M, y - 3, W - M, y - 3);
+  });
+
+  y += 4;
+  if (y > 250) { pdf.addPage(); y = 20; }
+  pdf.setFont(undefined, 'bold'); pdf.setTextColor(0); pdf.setFontSize(9);
+  pdf.text(`Total Packages: ${totalPkgs}`, W - M, y, { align: 'right' });
+  y += 8;
+
+  // Notes
+  if (dn.notes) {
+    if (y > 240) { pdf.addPage(); y = 20; }
+    pdf.setFontSize(8); pdf.setFont(undefined, 'bold'); pdf.setTextColor(60);
+    pdf.text('NOTES', M, y); y += 5;
+    pdf.setFont(undefined, 'normal'); pdf.setTextColor(0);
+    pdf.text(dn.notes, M, y, { maxWidth: W - 2 * M });
+    y += 5;
+  }
+
+  // Signature block (inti fungsi DN: bukti serah-terima fisik)
+  const sigY = Math.max(y + 14, 245);
+  const finalSigY = sigY > 260 ? (pdf.addPage(), 30) : sigY;
+  const colW3 = (W - 2 * M) / 3;
+  const sigCols = [
+    { label: 'Prepared By', name: '' },
+    { label: 'Driver', name: dn.driver_name || '' },
+    { label: 'Received By', name: dn.received_by_name || '' },
+  ];
+  pdf.setDrawColor(0); pdf.setFontSize(8); pdf.setTextColor(0);
+  sigCols.forEach((s, i) => {
+    const x = M + i * colW3;
+    pdf.line(x, finalSigY, x + colW3 - 10, finalSigY);
+    pdf.setFont(undefined, 'bold');
+    pdf.text(s.label, x, finalSigY + 5);
+    pdf.setFont(undefined, 'normal');
+    if (s.name) pdf.text(s.name, x, finalSigY - 3);
+    pdf.text(
+      s.label === 'Received By' && dn.received_date ? `Date: ${dn.received_date}` : 'Date: ______________',
+      x, finalSigY + 10
+    );
+  });
+
+  if (data.watermark) {
+    applyWatermarkToAllPages(pdf, W, 297);
+    pdf.save(`PREVIEW-${dn.dn_number || 'delivery-note'}.pdf`);
+  } else {
+    pdf.save(`${dn.dn_number}.pdf`);
+  }
+}

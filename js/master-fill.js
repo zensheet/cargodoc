@@ -35,6 +35,7 @@ if (typeof esc !== 'function') {
   attachCompanyFill('f-receiver_name', 'customer');
   attachCompanyFill('f-supplier_name', 'supplier'); // purchase-order.html
   attachCompanyFill('f-customer_name', 'customer'); // sales-order.html
+  attachCompanyFill('f-from_name', 'supplier'); // delivery-note.html (biasanya gudang/kita sendiri)
   attachProductFill();
 })();
 
