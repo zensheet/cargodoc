@@ -23,6 +23,10 @@ let EDIT_ID = null; // null = create baru; berisi id = mode edit
 
   EDIT_ID = new URLSearchParams(location.search).get('id');
 
+  // SI dropdown harus terisi options-nya DULU sebelum loadDnForEdit coba
+  // set value-nya (select butuh <option> yang matching sudah ada dulu).
+  await loadSiOptions();
+
   if (EDIT_ID) {
     await loadDnForEdit(EDIT_ID);
   } else {
@@ -31,6 +35,80 @@ let EDIT_ID = null; // null = create baru; berisi id = mode edit
     addItemRow();
   }
 })();
+
+// ---------- SOURCE SHIPPING INSTRUCTION OPTIONS ----------
+// SI -> DN (document linking): Shipper -> From, Consignee -> Deliver To,
+// cargo lines -> items (bentuk hampir sama: description/package_count/
+// package_type/qty/unit -- SKU & weight/measurement tidak ada di SI, jadi
+// dikosongkan, user isi manual kalau perlu).
+async function loadSiOptions() {
+  const { data: sis } = await supabase
+    .from('shipping_instructions')
+    .select('id, si_number, consignee_name')
+    .order('created_at', { ascending: false })
+    .limit(50);
+
+  const sel = document.getElementById('f-source_si');
+  if (!sel) return;
+  (sis || []).forEach(si => {
+    const opt = document.createElement('option');
+    opt.value = si.id;
+    opt.textContent = `${si.si_number}${si.consignee_name ? ' — ' + si.consignee_name : ''}`;
+    sel.appendChild(opt);
+  });
+}
+
+async function loadFromSi() {
+  const siId = document.getElementById('f-source_si').value;
+  if (!siId) return;
+
+  if (!confirm('Load data from this shipping instruction?\nCurrent form contents will be replaced.')) {
+    document.getElementById('f-source_si').value = '';
+    return;
+  }
+
+  const { data: si, error } = await supabase
+    .from('shipping_instructions').select('*').eq('id', siId).single();
+  if (error || !si) return alert('Failed to load shipping instruction: ' + (error?.message || 'not found'));
+
+  const { data: items } = await supabase
+    .from('shipping_instruction_items').select('*').eq('shipping_instruction_id', siId).order('created_at');
+
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+
+  set('f-from_name',    si.shipper_name);
+  set('f-from_pic',     si.shipper_pic);
+  set('f-from_address', si.shipper_address);
+  set('f-from_city',    si.shipper_city);
+  set('f-from_country', si.shipper_country);
+  set('f-from_phone',   si.shipper_phone);
+  set('f-from_email',   si.shipper_email);
+  set('f-deliver_to_name',    si.consignee_name);
+  set('f-deliver_to_pic',     si.consignee_pic);
+  set('f-deliver_to_address', si.consignee_address);
+  set('f-deliver_to_city',    si.consignee_city);
+  set('f-deliver_to_country', si.consignee_country);
+  set('f-deliver_to_phone',   si.consignee_phone);
+  set('f-deliver_to_email',   si.consignee_email);
+  set('f-reference_number', si.si_number); // jejak: DN ini dari SI mana
+
+  const tbody = document.querySelector('#items-table tbody');
+  tbody.innerHTML = '';
+  if (items?.length) {
+    items.forEach(it => {
+      addItemRow();
+      const tr = tbody.lastElementChild;
+      tr.querySelector('.i-description').value = it.description || '';
+      tr.querySelector('.i-package_count').value = it.package_count ?? '';
+      tr.querySelector('.i-package_type').value = it.package_type || '';
+      tr.querySelector('.i-quantity').value = it.quantity ?? '';
+      tr.querySelector('.i-unit').value = it.unit || '';
+    });
+  } else {
+    addItemRow();
+  }
+  recalc();
+}
 
 // ---------- LOAD UNTUK EDIT ----------
 async function loadDnForEdit(id) {
@@ -53,6 +131,7 @@ async function loadDnForEdit(id) {
 
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val ?? ''; };
 
+  set('f-source_si', dn.source_si_id || '');
   set('f-dn_number', dn.dn_number);
   set('f-dn_date', dn.dn_date);
   set('f-reference_number', dn.reference_number);

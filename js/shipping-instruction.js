@@ -22,6 +22,10 @@ let EDIT_ID = null; // null = create baru; berisi id = mode edit
 
   EDIT_ID = new URLSearchParams(location.search).get('id');
 
+  // PL dropdown harus terisi options-nya DULU sebelum loadSiForEdit coba
+  // set value-nya (select butuh <option> yang matching sudah ada dulu).
+  await loadPlOptions();
+
   if (EDIT_ID) {
     await loadSiForEdit(EDIT_ID);
   } else {
@@ -30,6 +34,81 @@ let EDIT_ID = null; // null = create baru; berisi id = mode edit
     addItemRow();
   }
 })();
+
+// ---------- SOURCE PACKING LIST OPTIONS ----------
+// Packing List -> SI (document linking): Shipper -> Shipper, Receiver ->
+// Consignee, packages -> cargo lines (bentuknya mirip: description/qty/
+// unit/weight/package_type -- cocok langsung).
+async function loadPlOptions() {
+  const { data: pls } = await supabase
+    .from('packing_lists')
+    .select('id, packing_list_number, receiver_name')
+    .order('created_at', { ascending: false })
+    .limit(50);
+
+  const sel = document.getElementById('f-source_pl');
+  if (!sel) return;
+  (pls || []).forEach(pl => {
+    const opt = document.createElement('option');
+    opt.value = pl.id;
+    opt.textContent = `${pl.packing_list_number}${pl.receiver_name ? ' — ' + pl.receiver_name : ''}`;
+    sel.appendChild(opt);
+  });
+}
+
+async function loadFromPl() {
+  const plId = document.getElementById('f-source_pl').value;
+  if (!plId) return;
+
+  if (!confirm('Load data from this packing list?\nCurrent form contents will be replaced.')) {
+    document.getElementById('f-source_pl').value = '';
+    return;
+  }
+
+  const { data: pl, error } = await supabase
+    .from('packing_lists').select('*').eq('id', plId).single();
+  if (error || !pl) return alert('Failed to load packing list: ' + (error?.message || 'not found'));
+
+  const { data: packages } = await supabase
+    .from('packing_list_items').select('*').eq('packing_list_id', plId).order('created_at');
+
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+
+  set('f-shipper_name',    pl.shipper_name);
+  set('f-shipper_pic',     pl.shipper_pic);
+  set('f-shipper_address', pl.shipper_address);
+  set('f-shipper_city',    pl.shipper_city);
+  set('f-shipper_country', pl.shipper_country);
+  set('f-shipper_phone',   pl.shipper_phone);
+  set('f-shipper_email',   pl.shipper_email);
+  set('f-consignee_name',    pl.receiver_name);
+  set('f-consignee_pic',     pl.receiver_pic);
+  set('f-consignee_address', pl.receiver_address);
+  set('f-consignee_city',    pl.receiver_city);
+  set('f-consignee_country', pl.receiver_country);
+  set('f-consignee_phone',   pl.receiver_phone);
+  set('f-consignee_email',   pl.receiver_email);
+  set('f-reference_number', pl.packing_list_number); // jejak: SI ini dari PL mana
+
+  const tbody = document.querySelector('#items-table tbody');
+  tbody.innerHTML = '';
+  if (packages?.length) {
+    packages.forEach(p => {
+      addItemRow();
+      const tr = tbody.lastElementChild;
+      tr.querySelector('.i-description').value = p.description || '';
+      tr.querySelector('.i-package_count').value = 1; // 1 baris PL = 1 package fisik
+      tr.querySelector('.i-package_type').value = p.package_type || '';
+      tr.querySelector('.i-quantity').value = p.quantity ?? '';
+      tr.querySelector('.i-unit').value = p.unit || '';
+      tr.querySelector('.i-gross_weight').value = p.gross_weight ?? '';
+      tr.querySelector('.i-measurement').value = p.cbm ?? '';
+    });
+  } else {
+    addItemRow();
+  }
+  recalc();
+}
 
 // ---------- LOAD UNTUK EDIT ----------
 async function loadSiForEdit(id) {
@@ -52,6 +131,7 @@ async function loadSiForEdit(id) {
 
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val ?? ''; };
 
+  set('f-source_pl', si.source_packing_list_id || '');
   set('f-si_number', si.si_number);
   set('f-si_date', si.si_date);
   set('f-reference_number', si.reference_number);
@@ -267,6 +347,7 @@ async function persistShippingInstruction(data, status) {
     ...data.shipping_instruction,
     user_id: session.user.id,
     status,
+    source_packing_list_id: document.getElementById('f-source_pl')?.value || null,
     shipper_name: data.shipper.company_name,
     shipper_pic: data.shipper.pic,
     shipper_address: data.shipper.address,

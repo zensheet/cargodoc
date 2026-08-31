@@ -39,6 +39,12 @@
         <h3>Invoice Information</h3>
         <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:0 16px;">
           <div>
+            <label>Source Sales Order <small style="color:var(--text-muted);">(optional — auto-fill customer & items)</small></label>
+            <select id="f-source_so" onchange="loadFromSo()">
+              <option value="">— None (fill manually) —</option>
+            </select>
+          </div>
+          <div>
             <label>Shipment Type</label>
             <select id="f-shipment_type">
               <option value="export">Export</option>

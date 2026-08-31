@@ -39,6 +39,12 @@
         <h3>Sales Order Information</h3>
         <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:0 16px;">
           <div>
+            <label>Source Purchase Order <small style="color:var(--text-muted);">(optional — auto-fill items)</small></label>
+            <select id="f-source_po" onchange="loadFromPo()">
+              <option value="">— None (fill manually) —</option>
+            </select>
+          </div>
+          <div>
             <label>SO Number</label>
             <div style="display:flex; gap:8px;">
               <input id="f-so_number" readonly>

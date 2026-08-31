@@ -39,6 +39,12 @@
         <h3>Delivery Note Information</h3>
         <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:0 16px;">
           <div>
+            <label>Source Shipping Instruction <small style="color:var(--text-muted);">(optional — auto-fill parties & items)</small></label>
+            <select id="f-source_si" onchange="loadFromSi()">
+              <option value="">— None (fill manually) —</option>
+            </select>
+          </div>
+          <div>
             <label>DN Number</label>
             <div style="display:flex; gap:8px;">
               <input id="f-dn_number" readonly>

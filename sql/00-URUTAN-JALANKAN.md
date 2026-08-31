@@ -134,6 +134,22 @@ sebelumnya (banyak pakai `references` / `ALTER TABLE ... ADD COLUMN`).
     TIDAK auto-enable untuk self-signup — admin enable manual per
     customer di `admin.html`.
 
+18. **`22-document-linking.sql`**
+    Rantai dokumen **PO → SO → Invoice → Packing List → SI → DN**: user
+    isi data sekali, dokumen berikutnya tinggal "Load from ..." (dropdown
+    di halaman create, pola yang sama dengan `packing_lists.source_invoice_id`
+    yang sudah ada dari awal — lihat "Prasyarat Database.sql"). Menambah
+    4 kolom nullable (`references ... on delete set null`, tanpa constraint
+    tambahan): `sales_orders.source_po_id`, `invoices.source_so_id`,
+    `shipping_instructions.source_packing_list_id`,
+    `delivery_notes.source_si_id`. Hop Invoice → Packing List TIDAK
+    disentuh (sudah ada duluan). Party info hanya di-copy kalau relasinya
+    masuk akal secara bisnis — PO → SO cuma bawa items (Supplier PO ≠
+    Customer SO, beda entitas, jadi party dikosongkan supaya user isi
+    manual, bukan ditebak salah). RLS TIDAK berubah — kolom baru otomatis
+    ikut ter-cover policy row-level yang sudah ada di masing-masing tabel.
+    Butuh langkah 17 sudah dijalankan.
+
 ---
 
 Catatan: tabel `customers` dan `suppliers` yang sempat ada di draft awal

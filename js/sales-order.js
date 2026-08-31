@@ -30,6 +30,10 @@ let IS_GUEST = false; // true = belum login (PRD §73 guest mode)
 
   EDIT_ID = new URLSearchParams(location.search).get('id');
 
+  // PO dropdown harus terisi options-nya DULU sebelum loadSoForEdit coba
+  // set value-nya (select butuh <option> yang matching sudah ada dulu).
+  await loadPoOptions();
+
   if (EDIT_ID) {
     await loadSoForEdit(EDIT_ID);
   } else {
@@ -38,6 +42,63 @@ let IS_GUEST = false; // true = belum login (PRD §73 guest mode)
     addItemRow();
   }
 })();
+
+// ---------- SOURCE PURCHASE ORDER OPTIONS ----------
+// PO -> SO (document linking): items yang sudah dibeli, dijual lagi.
+// Party info TIDAK di-copy (Supplier PO != Customer SO, beda entitas) --
+// cuma items + nomor referensi yang dibawa, biar user tidak salah isi.
+async function loadPoOptions() {
+  const { data: pos } = await supabase
+    .from('purchase_orders')
+    .select('id, po_number, supplier_name')
+    .order('created_at', { ascending: false })
+    .limit(50);
+
+  const sel = document.getElementById('f-source_po');
+  (pos || []).forEach(po => {
+    const opt = document.createElement('option');
+    opt.value = po.id;
+    opt.textContent = `${po.po_number}${po.supplier_name ? ' — ' + po.supplier_name : ''}`;
+    sel.appendChild(opt);
+  });
+}
+
+async function loadFromPo() {
+  const poId = document.getElementById('f-source_po').value;
+  if (!poId) return;
+
+  if (!confirm('Load items from this purchase order?\nCurrent item list will be replaced. Customer info is NOT copied (different party) — please fill that in yourself.')) {
+    document.getElementById('f-source_po').value = '';
+    return;
+  }
+
+  const { data: po, error } = await supabase
+    .from('purchase_orders').select('*').eq('id', poId).single();
+  if (error || !po) return alert('Failed to load purchase order: ' + (error?.message || 'not found'));
+
+  const { data: items } = await supabase
+    .from('purchase_order_items').select('*').eq('purchase_order_id', poId).order('created_at');
+
+  document.getElementById('f-reference_number').value = po.po_number || '';
+
+  const tbody = document.querySelector('#items-table tbody');
+  tbody.innerHTML = '';
+  if (items?.length) {
+    items.forEach(it => {
+      addItemRow();
+      const tr = tbody.lastElementChild;
+      tr.querySelector('.i-description').value = it.description || '';
+      tr.querySelector('.i-sku').value = it.sku || '';
+      tr.querySelector('.i-quantity').value = it.quantity ?? '';
+      tr.querySelector('.i-unit').value = it.unit || 'PCS';
+      tr.querySelector('.i-unit_price').value = it.unit_price ?? '';
+      tr.querySelector('.i-amount').value = it.amount ?? '';
+    });
+  } else {
+    addItemRow();
+  }
+  recalc();
+}
 
 // ---------- LOAD UNTUK EDIT ----------
 async function loadSoForEdit(id) {
@@ -60,6 +121,7 @@ async function loadSoForEdit(id) {
 
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val ?? ''; };
 
+  set('f-source_po', so.source_po_id || '');
   set('f-so_number', so.so_number);
   set('f-so_date', so.so_date);
   set('f-currency', so.currency || 'USD');
@@ -251,6 +313,7 @@ async function persistSalesOrder(data, status) {
     ...data.sales_order,
     user_id: session.user.id,
     status,
+    source_po_id: document.getElementById('f-source_po')?.value || null,
     customer_name:    data.customer.company_name,
     customer_pic:     data.customer.pic,
     customer_address: data.customer.address,

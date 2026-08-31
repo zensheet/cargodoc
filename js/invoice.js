@@ -38,6 +38,10 @@ const DOC_TYPE_META = {
 
   EDIT_ID = new URLSearchParams(location.search).get('id');
 
+  // SO dropdown harus terisi options-nya DULU sebelum loadInvoiceForEdit
+  // coba set value-nya (select butuh <option> yang matching sudah ada dulu).
+  await loadSoOptions();
+
   if (EDIT_ID) {
     await loadInvoiceForEdit(EDIT_ID);
   } else {
@@ -79,6 +83,92 @@ function applyDocTypeUI() {
   if (convertBtn) convertBtn.hidden = !(EDIT_ID && DOC_TYPE === 'proforma');
 }
 
+// ---------- SOURCE SALES ORDER OPTIONS ----------
+// SO -> Invoice (document linking): SO sudah dikonfirmasi customer,
+// tinggal diterbitkan invoice-nya. Customer/Ship To DIBAWA (relasi
+// masuk akal: SO Customer = pihak yang akan ditagih di invoice).
+async function loadSoOptions() {
+  const { data: sos } = await supabase
+    .from('sales_orders')
+    .select('id, so_number, customer_name')
+    .order('created_at', { ascending: false })
+    .limit(50);
+
+  const sel = document.getElementById('f-source_so');
+  if (!sel) return;
+  (sos || []).forEach(so => {
+    const opt = document.createElement('option');
+    opt.value = so.id;
+    opt.textContent = `${so.so_number}${so.customer_name ? ' — ' + so.customer_name : ''}`;
+    sel.appendChild(opt);
+  });
+}
+
+async function loadFromSo() {
+  const soId = document.getElementById('f-source_so').value;
+  if (!soId) return;
+
+  if (!confirm('Load data from this sales order?\nCurrent form contents will be replaced.')) {
+    document.getElementById('f-source_so').value = '';
+    return;
+  }
+
+  const { data: so, error } = await supabase
+    .from('sales_orders').select('*').eq('id', soId).single();
+  if (error || !so) return alert('Failed to load sales order: ' + (error?.message || 'not found'));
+
+  const { data: items } = await supabase
+    .from('sales_order_items').select('*').eq('sales_order_id', soId).order('created_at');
+
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+
+  // Customer SO -> Receiver + Bill To invoice (pihak yang sama, ditagih)
+  set('f-receiver_name',    so.customer_name);
+  set('f-receiver_pic',     so.customer_pic);
+  set('f-receiver_address', so.customer_address);
+  set('f-receiver_city',    so.customer_city);
+  set('f-receiver_country', so.customer_country);
+  set('f-receiver_phone',   so.customer_phone);
+  set('f-receiver_email',   so.customer_email);
+  set('f-bill_to_name',     so.customer_name);
+  set('f-bill_to_pic',      so.customer_pic);
+  set('f-bill_to_address',  so.customer_address);
+  set('f-bill_to_city',     so.customer_city);
+  set('f-bill_to_country',  so.customer_country);
+  set('f-bill_to_phone',    so.customer_phone);
+  set('f-bill_to_email',    so.customer_email);
+  set('f-ship_to_name',     so.ship_to_name);
+  set('f-ship_to_pic',      so.ship_to_pic);
+  set('f-ship_to_address',  so.ship_to_address);
+  set('f-ship_to_city',     so.ship_to_city);
+  set('f-ship_to_country',  so.ship_to_country);
+  set('f-ship_to_phone',    so.ship_to_phone);
+  set('f-ship_to_email',    so.ship_to_email);
+
+  set('f-currency', so.currency || 'USD');
+  set('f-payment_terms', so.payment_terms);
+  set('f-reference_number', so.so_number); // jejak: invoice ini dari SO mana
+  set('f-po_number', so.reference_number); // rantai: kalau SO ini asalnya dari PO, ikut turun
+
+  // Items SO -> items invoice (bentuk sama persis: description/sku~hs_code/qty/unit/unit_price/amount)
+  const tbody = document.querySelector('#items-table tbody');
+  tbody.innerHTML = '';
+  if (items?.length) {
+    items.forEach(it => {
+      addItemRow();
+      const tr = tbody.lastElementChild;
+      tr.querySelector('.i-description').value = it.description || '';
+      tr.querySelector('.i-quantity').value = it.quantity ?? '';
+      tr.querySelector('.i-unit').value = it.unit || '';
+      tr.querySelector('.i-unit_price').value = it.unit_price ?? '';
+      tr.querySelector('.i-amount').value = it.amount ?? '';
+    });
+  } else {
+    addItemRow();
+  }
+  recalc();
+}
+
 // ---------- LOAD UNTUK EDIT ----------
 async function loadInvoiceForEdit(id) {
   const { data: inv, error } = await supabase
@@ -106,6 +196,7 @@ async function loadInvoiceForEdit(id) {
 
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val ?? ''; };
 
+  set('f-source_so', inv.source_so_id || '');
   set('f-shipment_type', inv.shipment_type || 'export');
   set('f-invoice_number', inv.invoice_number);
   set('f-invoice_date', inv.invoice_date);
@@ -376,6 +467,7 @@ async function persistInvoice(data, status) {
     ...data.invoice,
     user_id: session.user.id,
     status,
+    source_so_id: document.getElementById('f-source_so')?.value || null,
     // snapshot shipper/receiver (termasuk PIC) ke row invoice
     shipper_name:     data.shipper.company_name,
     shipper_pic:      data.shipper.pic,
