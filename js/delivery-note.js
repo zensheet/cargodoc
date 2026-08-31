@@ -70,7 +70,7 @@ async function loadFromSi() {
   const siId = document.getElementById('f-source_si').value;
   if (!siId) return;
 
-  if (!confirm('Load data from this shipping instruction?\nCurrent form contents will be replaced.')) {
+  if (!(await customConfirm('Load data from this shipping instruction?\nCurrent form contents will be replaced.'))) {
     document.getElementById('f-source_si').value = '';
     return;
   }
@@ -133,7 +133,7 @@ async function loadDnForEdit(id) {
 
   const heading = document.querySelector('.app-header .brand');
   if (heading) heading.innerHTML =
-    `<a href="/app.html" style="text-decoration:none;color:inherit;">📦 ISG</a> / Edit Delivery Note ${dn.dn_number}`;
+    `<a href="/app.html" style="text-decoration:none;color:inherit;"><img src="assets/logo-cargodoc.webp" alt="CargoDoc" style="height:18px;vertical-align:middle;"></a> / Edit Delivery Note ${dn.dn_number}`;
   document.getElementById('btn-save').textContent = 'Update & Download PDF';
   document.getElementById('btn-save-only').textContent = 'Update Draft';
 

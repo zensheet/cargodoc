@@ -128,7 +128,7 @@ function resetCompanyForm() {
 }
 
 async function deleteCompany(id, name) {
-  if (!confirm(`Delete company "${name}" from master data?\n\nExisting invoices are NOT affected.`)) return;
+  if (!(await customConfirm(`Delete company "${name}" from master data?\n\nExisting invoices are NOT affected.`))) return;
   const { error } = await supabase.from('companies').delete().eq('id', id);
   if (error) return alert('Delete failed: ' + error.message);
   await loadCompanies();
@@ -221,7 +221,7 @@ function resetProductForm() {
 }
 
 async function deleteProduct(id, name) {
-  if (!confirm(`Delete product "${name}" from master data?\n\nExisting invoices are NOT affected.`)) return;
+  if (!(await customConfirm(`Delete product "${name}" from master data?\n\nExisting invoices are NOT affected.`))) return;
   const { error } = await supabase.from('products').delete().eq('id', id);
   if (error) return alert('Delete failed: ' + error.message);
   await loadProducts();
@@ -297,7 +297,7 @@ async function saveFieldDef() {
 }
 
 async function deleteFieldDef(id, label) {
-  if (!confirm(`Delete custom field "${label}"?\n\nIt will no longer appear on forms. Values already saved on existing documents are NOT affected.`)) return;
+  if (!(await customConfirm(`Delete custom field "${label}"?\n\nIt will no longer appear on forms. Values already saved on existing documents are NOT affected.`))) return;
   const { error } = await supabase.from('custom_field_definitions').delete().eq('id', id);
   if (error) return alert('Delete failed: ' + error.message);
   await loadFieldDefs();

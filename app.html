@@ -3,14 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Dashboard — Invoice Shipping Generator</title>
+<title>Dashboard — CargoDoc</title>
 <link rel="stylesheet" href="css/app.css">
+<link rel="icon" href="assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="assets/favicon-32.png" sizes="32x32">
+<link rel="icon" type="image/png" href="assets/favicon-192.png" sizes="192x192">
+<link rel="apple-touch-icon" href="assets/favicon-180.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
   <header class="app-header">
-    <div class="brand">📦 ISG</div>
+    <div class="brand"><img src="assets/logo-cargodoc.webp" alt="CargoDoc" style="height:20px;vertical-align:middle;"></div>
     <div class="user-info">
       <span id="user-name"></span>
       <a href="/admin.html" id="nav-admin-link" class="btn btn-secondary btn-sm" hidden>Admin</a>
@@ -43,6 +47,7 @@
 
   <script src="js/config.js"></script>
   <script src="js/auth.js"></script>
+  <script src="js/notify.js"></script>
   <script src="js/guard.js"></script>
   <script src="js/dashboard.js"></script>
 </body>

@@ -53,7 +53,7 @@ async function loadPoForEdit(id) {
 
   const heading = document.querySelector('.app-header .brand');
   if (heading) heading.innerHTML =
-    `<a href="/app.html" style="text-decoration:none;color:inherit;">📦 ISG</a> / Edit Purchase Order ${po.po_number}`;
+    `<a href="/app.html" style="text-decoration:none;color:inherit;"><img src="assets/logo-cargodoc.webp" alt="CargoDoc" style="height:18px;vertical-align:middle;"></a> / Edit Purchase Order ${po.po_number}`;
   document.getElementById('btn-save').textContent = 'Update & Download PDF';
   document.getElementById('btn-save-only').textContent = 'Update Draft';
 

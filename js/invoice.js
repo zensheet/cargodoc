@@ -71,7 +71,7 @@ function applyDocTypeUI() {
   document.title = `${meta.title} — Invoice Shipping Generator`;
   const brand = document.querySelector('.app-header .brand');
   if (brand && !EDIT_ID) {
-    brand.innerHTML = `<a href="/app.html" style="text-decoration:none;color:inherit;">📦 ISG</a> / ${meta.title}`;
+    brand.innerHTML = `<a href="/app.html" style="text-decoration:none;color:inherit;"><img src="assets/logo-cargodoc.webp" alt="CargoDoc" style="height:18px;vertical-align:middle;"></a> / ${meta.title}`;
   }
   const numberHint = document.getElementById('invoice-number-hint');
   if (numberHint) numberHint.textContent = `Auto-generated (${meta.prefix}-{YEAR}-{SEQ})`;
@@ -108,7 +108,7 @@ async function loadFromSo() {
   const soId = document.getElementById('f-source_so').value;
   if (!soId) return;
 
-  if (!confirm('Load data from this sales order?\nCurrent form contents will be replaced.')) {
+  if (!(await customConfirm('Load data from this sales order?\nCurrent form contents will be replaced.'))) {
     document.getElementById('f-source_so').value = '';
     return;
   }
@@ -189,7 +189,7 @@ async function loadInvoiceForEdit(id) {
   // Header halaman & tombol -> jelasin ini mode edit
   const heading = document.querySelector('.app-header .brand');
   if (heading) heading.innerHTML =
-    `<a href="/app.html" style="text-decoration:none;color:inherit;">📦 ISG</a> / Edit ${meta.title} ${inv.invoice_number}`;
+    `<a href="/app.html" style="text-decoration:none;color:inherit;"><img src="assets/logo-cargodoc.webp" alt="CargoDoc" style="height:18px;vertical-align:middle;"></a> / Edit ${meta.title} ${inv.invoice_number}`;
   document.getElementById('btn-save').textContent = 'Update & Download PDF';
   document.getElementById('btn-save-only').textContent = 'Update Draft';
   applyDocTypeUI();
@@ -561,9 +561,9 @@ async function saveOnly() {
 // aslinya TIDAK dihapus/diubah — tetap ada sebagai riwayat quotation.
 async function convertToCommercial() {
   if (!EDIT_ID || DOC_TYPE !== 'proforma') return;
-  if (!confirm('Convert this Proforma Invoice into a new Commercial Invoice?\n'
+  if (!(await customConfirm('Convert this Proforma Invoice into a new Commercial Invoice?\n'
     + 'A new Commercial Invoice will be created with a new number. '
-    + 'This Proforma Invoice will not be changed.')) return;
+    + 'This Proforma Invoice will not be changed.'))) return;
 
   const data = collectInvoice();
   data.invoice.doc_type = 'commercial';

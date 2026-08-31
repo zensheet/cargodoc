@@ -57,7 +57,7 @@ async function loadPackingListForEdit(id) {
 
   const heading = document.querySelector('.app-header .brand');
   if (heading) heading.innerHTML =
-    `<a href="/app.html" style="text-decoration:none;color:inherit;">📦 ISG</a> / Edit Packing List ${pl.packing_list_number}`;
+    `<a href="/app.html" style="text-decoration:none;color:inherit;"><img src="assets/logo-cargodoc.webp" alt="CargoDoc" style="height:18px;vertical-align:middle;"></a> / Edit Packing List ${pl.packing_list_number}`;
   document.getElementById('btn-save').textContent = 'Update & Download PDF';
   document.getElementById('btn-save-only').textContent = 'Update Draft';
 
@@ -171,7 +171,7 @@ async function loadFromInvoice() {
   const invoiceId = document.getElementById('f-source_invoice').value;
   if (!invoiceId) return;
 
-  if (!confirm('Load data from this invoice?\nCurrent form contents will be replaced.')) {
+  if (!(await customConfirm('Load data from this invoice?\nCurrent form contents will be replaced.'))) {
     document.getElementById('f-source_invoice').value = '';
     return;
   }

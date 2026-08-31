@@ -3,14 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Master Data — Invoice Shipping Generator</title>
+<title>Master Data — CargoDoc</title>
 <link rel="stylesheet" href="css/app.css">
+<link rel="icon" href="assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="assets/favicon-32.png" sizes="32x32">
+<link rel="icon" type="image/png" href="assets/favicon-192.png" sizes="192x192">
+<link rel="apple-touch-icon" href="assets/favicon-180.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
   <header class="app-header">
-    <div class="brand"><a href="/app.html" style="text-decoration:none;color:inherit;">📦 ISG</a> / Master Data</div>
+    <div class="brand"><a href="/app.html" style="text-decoration:none;color:inherit;"><img src="assets/logo-cargodoc.webp" alt="CargoDoc" style="height:20px;vertical-align:middle;"></a> / Master Data</div>
     <div class="user-info">
       <span id="user-name"></span>
       <a href="/app.html" class="btn btn-secondary btn-sm">Dashboard</a>
@@ -118,6 +122,7 @@
 
   <script src="js/config.js"></script>
   <script src="js/auth.js"></script>
+  <script src="js/notify.js"></script>
   <script src="js/guard.js"></script>
   <script src="js/master.js"></script>
 </body>

@@ -176,7 +176,7 @@ async function downloadPo(id) {
 
 // ---------- DUPLICATE ----------
 async function duplicatePo(id) {
-  if (!confirm('Duplicate this purchase order?\nA new purchase order with a new number will be created.')) return;
+  if (!(await customConfirm('Duplicate this purchase order?\nA new purchase order with a new number will be created.'))) return;
 
   const { data: po, error } = await supabase
     .from('purchase_orders').select('*').eq('id', id).single();
@@ -210,7 +210,7 @@ async function duplicatePo(id) {
 
 // ---------- DELETE ----------
 async function deletePo(id, number) {
-  if (!confirm(`Delete purchase order ${number}?\n\nThis action is PERMANENT and cannot be undone.`)) return;
+  if (!(await customConfirm(`Delete purchase order ${number}?\n\nThis action is PERMANENT and cannot be undone.`))) return;
 
   const { error } = await supabase
     .from('purchase_orders').delete().eq('id', id);

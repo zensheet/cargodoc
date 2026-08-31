@@ -176,7 +176,7 @@ async function downloadSi(id) {
 
 // ---------- DUPLICATE ----------
 async function duplicateSi(id) {
-  if (!confirm('Duplicate this shipping instruction?\nA new shipping instruction with a new number will be created.')) return;
+  if (!(await customConfirm('Duplicate this shipping instruction?\nA new shipping instruction with a new number will be created.'))) return;
 
   const { data: si, error } = await supabase
     .from('shipping_instructions').select('*').eq('id', id).single();
@@ -210,7 +210,7 @@ async function duplicateSi(id) {
 
 // ---------- DELETE ----------
 async function deleteSi(id, number) {
-  if (!confirm(`Delete shipping instruction ${number}?\n\nThis action is PERMANENT and cannot be undone.`)) return;
+  if (!(await customConfirm(`Delete shipping instruction ${number}?\n\nThis action is PERMANENT and cannot be undone.`))) return;
 
   const { error } = await supabase
     .from('shipping_instructions').delete().eq('id', id);

@@ -184,7 +184,7 @@ async function downloadPl(id) {
 
 // ---------- DUPLICATE ----------
 async function duplicatePl(id) {
-  if (!confirm('Duplicate this packing list?\nA new packing list with a new number will be created.')) return;
+  if (!(await customConfirm('Duplicate this packing list?\nA new packing list with a new number will be created.'))) return;
 
   const { data: pl, error } = await supabase
     .from('packing_lists').select('*').eq('id', id).single();
@@ -217,7 +217,7 @@ async function duplicatePl(id) {
 
 // ---------- DELETE ----------
 async function deletePl(id, number) {
-  if (!confirm(`Delete packing list ${number}?\n\nThis action is PERMANENT and cannot be undone.`)) return;
+  if (!(await customConfirm(`Delete packing list ${number}?\n\nThis action is PERMANENT and cannot be undone.`))) return;
   const { error } = await supabase
     .from('packing_lists').delete().eq('id', id);
   if (error) return alert('Delete failed: ' + error.message);

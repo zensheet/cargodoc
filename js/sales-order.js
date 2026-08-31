@@ -67,7 +67,7 @@ async function loadFromPo() {
   const poId = document.getElementById('f-source_po').value;
   if (!poId) return;
 
-  if (!confirm('Load items from this purchase order?\nCurrent item list will be replaced. Customer info is NOT copied (different party) — please fill that in yourself.')) {
+  if (!(await customConfirm('Load items from this purchase order?\nCurrent item list will be replaced. Customer info is NOT copied (different party) — please fill that in yourself.'))) {
     document.getElementById('f-source_po').value = '';
     return;
   }
@@ -115,7 +115,7 @@ async function loadSoForEdit(id) {
 
   const heading = document.querySelector('.app-header .brand');
   if (heading) heading.innerHTML =
-    `<a href="/app.html" style="text-decoration:none;color:inherit;">📦 ISG</a> / Edit Sales Order ${so.so_number}`;
+    `<a href="/app.html" style="text-decoration:none;color:inherit;"><img src="assets/logo-cargodoc.webp" alt="CargoDoc" style="height:18px;vertical-align:middle;"></a> / Edit Sales Order ${so.so_number}`;
   document.getElementById('btn-save').textContent = 'Update & Download PDF';
   document.getElementById('btn-save-only').textContent = 'Update Draft';
 

@@ -176,7 +176,7 @@ async function downloadSo(id) {
 
 // ---------- DUPLICATE ----------
 async function duplicateSo(id) {
-  if (!confirm('Duplicate this sales order?\nA new sales order with a new number will be created.')) return;
+  if (!(await customConfirm('Duplicate this sales order?\nA new sales order with a new number will be created.'))) return;
 
   const { data: so, error } = await supabase
     .from('sales_orders').select('*').eq('id', id).single();
@@ -210,7 +210,7 @@ async function duplicateSo(id) {
 
 // ---------- DELETE ----------
 async function deleteSo(id, number) {
-  if (!confirm(`Delete sales order ${number}?\n\nThis action is PERMANENT and cannot be undone.`)) return;
+  if (!(await customConfirm(`Delete sales order ${number}?\n\nThis action is PERMANENT and cannot be undone.`))) return;
 
   const { error } = await supabase
     .from('sales_orders').delete().eq('id', id);

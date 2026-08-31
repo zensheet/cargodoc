@@ -195,7 +195,7 @@ async function downloadInvoice(id) {
 // ---------- DUPLICATE (PRD §26) ----------
 // Dokumen BARU: id baru, nomor baru, timestamp baru — data items tersalin
 async function duplicateInvoice(id) {
-  if (!confirm('Duplicate this invoice?\nA new invoice with a new number will be created.')) return;
+  if (!(await customConfirm('Duplicate this invoice?\nA new invoice with a new number will be created.'))) return;
 
   const { data: inv, error } = await supabase
     .from('invoices').select('*').eq('id', id).single();
@@ -231,7 +231,7 @@ async function duplicateInvoice(id) {
 // ---------- DELETE (PRD §25) ----------
 async function deleteInvoice(id, number) {
   // konfirmasi eksplisit dengan nama nomor invoice
-  if (!confirm(`Delete invoice ${number}?\n\nThis action is PERMANENT and cannot be undone.`)) return;
+  if (!(await customConfirm(`Delete invoice ${number}?\n\nThis action is PERMANENT and cannot be undone.`))) return;
 
   // items terhapus otomatis via ON DELETE CASCADE
   const { error } = await supabase

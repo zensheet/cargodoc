@@ -129,7 +129,7 @@ async function toggleFeature(userId, featureId, enabled) {
 // 'locked' -> 'active' (Unlock, perilaku lama).
 async function setStatus(userId, newStatus) {
   if (newStatus === 'locked'
-      && !confirm('Lock this account? User will be denied access on next login/page load.')) return;
+      && !(await customConfirm('Lock this account? User will be denied access on next login/page load.'))) return;
   const { error } = await supabase
     .from('profiles').update({ status: newStatus }).eq('id', userId);
   if (error) { alert('Failed: ' + error.message); return; }

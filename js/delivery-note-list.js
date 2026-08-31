@@ -171,7 +171,7 @@ async function downloadDn(id) {
 
 // ---------- DUPLICATE ----------
 async function duplicateDn(id) {
-  if (!confirm('Duplicate this delivery note?\nA new delivery note with a new number will be created.')) return;
+  if (!(await customConfirm('Duplicate this delivery note?\nA new delivery note with a new number will be created.'))) return;
 
   const { data: dn, error } = await supabase
     .from('delivery_notes').select('*').eq('id', id).single();
@@ -206,7 +206,7 @@ async function duplicateDn(id) {
 
 // ---------- DELETE ----------
 async function deleteDn(id, number) {
-  if (!confirm(`Delete delivery note ${number}?\n\nThis action is PERMANENT and cannot be undone.`)) return;
+  if (!(await customConfirm(`Delete delivery note ${number}?\n\nThis action is PERMANENT and cannot be undone.`))) return;
 
   const { error } = await supabase
     .from('delivery_notes').delete().eq('id', id);
