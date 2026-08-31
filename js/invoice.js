@@ -550,7 +550,7 @@ async function saveOnly() {
     alert(EDIT_ID ? '✅ Invoice updated.' : '✅ Invoice saved as draft.');
     location.href = '/invoice-list.html';
   } catch (e) {
-    alert(e.message); btn.disabled = false;
+    alert(friendlyErrorMessage(e)); btn.disabled = false;
     btn.textContent = EDIT_ID ? 'Update Draft' : 'Save as Draft';
   }
 }
@@ -580,7 +580,7 @@ async function convertToCommercial() {
   } catch (e) {
     EDIT_ID = prevEditId;
     DOC_TYPE = 'proforma';
-    alert(e.message);
+    alert(friendlyErrorMessage(e));
   }
 }
 
@@ -625,7 +625,7 @@ async function saveAndDownload() {
       + (watermark ? '\n\n⏳ Your account is pending activation — the PDF still has a watermark.' : ''));
     location.href = '/invoice-list.html';
   } catch (e) {
-    alert(e.message); btn.disabled = false;
+    alert(friendlyErrorMessage(e)); btn.disabled = false;
     btn.textContent = EDIT_ID ? 'Update & Download PDF' : 'Save & Download PDF';
   }
 }

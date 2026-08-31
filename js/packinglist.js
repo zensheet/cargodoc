@@ -468,7 +468,7 @@ async function saveOnly() {
     alert(EDIT_PL_ID ? '✅ Packing list updated.' : '✅ Packing list saved as draft.');
     location.href = '/packinglist-list.html';
   } catch (e) {
-    alert(e.message); btn.disabled = false;
+    alert(friendlyErrorMessage(e)); btn.disabled = false;
     btn.textContent = EDIT_PL_ID ? 'Update Draft' : 'Save as Draft';
   }
 }
@@ -512,7 +512,7 @@ async function saveAndDownload() {
       + (watermark ? '\n\n⏳ Your account is pending activation — the PDF still has a watermark.' : ''));
     location.href = '/packinglist-list.html';
   } catch (e) {
-    alert(e.message); btn.disabled = false;
+    alert(friendlyErrorMessage(e)); btn.disabled = false;
     btn.textContent = EDIT_PL_ID ? 'Update & Download PDF' : 'Save & Download PDF';
   }
 }

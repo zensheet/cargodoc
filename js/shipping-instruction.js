@@ -432,7 +432,7 @@ async function saveOnly() {
     alert(EDIT_ID ? '✅ Shipping instruction updated.' : '✅ Shipping instruction saved as draft.');
     location.href = '/shipping-instruction-list.html';
   } catch (e) {
-    alert(e.message); btn.disabled = false;
+    alert(friendlyErrorMessage(e)); btn.disabled = false;
     btn.textContent = EDIT_ID ? 'Update Draft' : 'Save as Draft';
   }
 }
@@ -474,7 +474,7 @@ async function saveAndDownload() {
       + (watermark ? '\n\n⏳ Your account is pending activation — the PDF still has a watermark.' : ''));
     location.href = '/shipping-instruction-list.html';
   } catch (e) {
-    alert(e.message); btn.disabled = false;
+    alert(friendlyErrorMessage(e)); btn.disabled = false;
     btn.textContent = EDIT_ID ? 'Update & Download PDF' : 'Save & Download PDF';
   }
 }

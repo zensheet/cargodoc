@@ -376,7 +376,7 @@ async function saveOnly() {
     alert(EDIT_ID ? '✅ Sales order updated.' : '✅ Sales order saved as draft.');
     location.href = '/sales-order-list.html';
   } catch (e) {
-    alert(e.message); btn.disabled = false;
+    alert(friendlyErrorMessage(e)); btn.disabled = false;
     btn.textContent = EDIT_ID ? 'Update Draft' : 'Save as Draft';
   }
 }
@@ -420,7 +420,7 @@ async function saveAndDownload() {
       + (watermark ? '\n\n⏳ Your account is pending activation — the PDF still has a watermark.' : ''));
     location.href = '/sales-order-list.html';
   } catch (e) {
-    alert(e.message); btn.disabled = false;
+    alert(friendlyErrorMessage(e)); btn.disabled = false;
     btn.textContent = EDIT_ID ? 'Update & Download PDF' : 'Save & Download PDF';
   }
 }

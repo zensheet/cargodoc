@@ -95,3 +95,43 @@ function escNotify(s) {
   return String(s ?? '').replace(/[&<>"']/g,
     c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
+
+// ============================================
+// FRIENDLY ERROR MESSAGES
+//
+// Beberapa insert gagal karena RLS (row-level security), paling sering
+// karena akun belum punya feature yang bersangkutan diaktifkan admin
+// (lihat has_feature() di migration SQL -- sales_order, purchase_order,
+// shipping_instruction, delivery_note TIDAK auto-enable untuk
+// self-signup). Supabase membalas dengan pesan teknis Postgres mentah
+// ("new row violates row-level security policy for table ...") yang
+// membingungkan buat end user -- friendlyErrorMessage() menerjemahkan
+// itu jadi pesan yang jelas apa yang harus dilakukan.
+// ============================================
+const FEATURE_LABEL_BY_TABLE = {
+  sales_orders: 'Sales Order',
+  sales_order_items: 'Sales Order',
+  purchase_orders: 'Purchase Order',
+  purchase_order_items: 'Purchase Order',
+  shipping_instructions: 'Shipping Instruction',
+  delivery_notes: 'Delivery Note',
+  invoices: 'Invoice',
+  packing_lists: 'Packing List',
+};
+
+function friendlyErrorMessage(error) {
+  const raw = String(error?.message ?? error ?? '');
+
+  if (/row-level security policy/i.test(raw)) {
+    const m = raw.match(/for table "?(\w+)"?/i);
+    const label = m && FEATURE_LABEL_BY_TABLE[m[1]];
+    if (label) {
+      return `⚠ Fitur "${label}" belum aktif untuk akun Anda.\n\n` +
+        'Kemungkinan akun ini baru dibuat dan fitur tersebut belum diaktifkan admin. ' +
+        'Hubungi admin untuk mengaktifkannya, lalu coba simpan lagi.';
+    }
+    return '⚠ Akun Anda belum punya akses untuk menyimpan data ini. Hubungi admin untuk mengaktifkan akses.';
+  }
+
+  return raw;
+}
