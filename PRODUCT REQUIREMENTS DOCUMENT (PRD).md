@@ -74,12 +74,17 @@ Planned features:
 
 ### Document Features
 
-- Commercial Invoice
-- Packing List
-- Purchase Order
-- Proforma Invoice
+- Commercial Invoice — Built
+- Packing List — Built
+- Proforma Invoice — Built
+- Purchase Order — Built
+- Sales Order — Built
+- Shipping Instruction — Built
+- Delivery Note — Built
 - Quotation
 - Certificate of Origin
+
+(Status detail & roadmap lengkap: §65)
 
 ### Calculation / Research Tools
 
@@ -163,11 +168,28 @@ Public registration tidak digunakan.
 
 # 6. AUTHENTICATION MODEL
 
-User tidak melakukan public sign-up.
+Ada **dua jalur** pembuatan account:
 
-Account dibuat / dikelola oleh Developer.
+### A. Admin-Created Account
 
-Flow:
+Account dibuat / dikelola oleh Developer lewat Admin Panel. Langsung
+berstatus `active`. Feature access default OFF, diaktifkan manual oleh
+Developer.
+
+### B. Self-Signup — Freemium Guest Mode (§73, §74)
+
+User dapat mencoba Invoice/Packing List **tanpa login** (guest mode), dan
+baru diminta membuat account di titik klik Download — bukan di awal.
+
+> **Prinsip: "Show the value first, ask for account later."**
+
+Account hasil self-signup otomatis mendapat feature `invoice` +
+`packing_list` aktif (free tier), tapi berstatus `pending` sampai
+Developer meng-klik **Activate** — selama itu PDF yang di-download tetap
+berwatermark. Detail lengkap ada di §73 (Guest Mode) dan §74 (Account
+Activation).
+
+Flow login (returning user):
 
 ```text id="6u2k8p"
 LOGIN
@@ -224,12 +246,23 @@ Account memiliki status:
 
 ```text id="1s8d7p"
 ACTIVE
+PENDING
 LOCKED
 ```
 
 ### ACTIVE
 
-User dapat login dan menggunakan feature yang diizinkan.
+User dapat login dan menggunakan feature yang diizinkan. PDF di-download
+tanpa watermark.
+
+### PENDING (§74)
+
+Status awal account hasil **self-signup** (guest mode, §73). User tetap
+bisa login dan memakai feature yang sudah otomatis aktif (`invoice` +
+`packing_list`) — termasuk menyimpan dokumen — tapi PDF yang di-download
+**berwatermark** sampai Developer meng-klik **Activate** di Admin Panel.
+Account admin-created TIDAK pernah berstatus `pending` — selalu langsung
+`active`.
 
 ### LOCKED
 
@@ -1499,22 +1532,24 @@ API Access
 
 # 62. PURCHASE ORDER
 
-Future feature.
+**Status: Built** (roadmap Core/Sales #4).
+
+Beda dari Proforma Invoice (§76, pakai `doc_type` di tabel `invoices`
+yang sama), Purchase Order pakai tabel sendiri (`purchase_orders` +
+`purchase_order_items`) karena field-nya cukup beda dari Commercial
+Invoice — party-nya "Supplier" (bukan Shipper/Receiver), tidak ada
+freight/insurance/incoterms.
 
 Flow:
 
 ```text id="x5p9n3"
-Supplier
+Supplier + Deliver To (opsional)
  ↓
-Products
+Items (description, SKU, qty, unit, unit price)
  ↓
-Quantity
+Terms (payment, delivery, expected delivery date)
  ↓
-Price
- ↓
-Terms
- ↓
-Purchase Order
+Purchase Order tersimpan (nomor otomatis PO-{YEAR}-{SEQ})
  ↓
 PDF
 ```
@@ -1524,6 +1559,16 @@ Feature access:
 ```text id="q7m4v8"
 purchase_order
 ```
+
+**Catatan akses:** beda dari `invoice`/`packing_list`, feature ini
+**tidak** otomatis aktif untuk akun self-signup (§73) — Developer perlu
+enable manual per customer, sama seperti akun admin-created. Tidak ada
+guest mode untuk halaman ini.
+
+Bisa dibuat dari nol, atau dari **Sales Order** (§75 — Document Chain)
+lewat "Load from Sales Order" (items saja yang ikut ter-copy, bukan
+party info — SO bukan pembelian, hubungan Supplier di PO tidak otomatis
+sama dengan Customer di SO).
 
 ---
 
@@ -1587,20 +1632,53 @@ duty_tax
 
 ---
 
-# 65. FUTURE DOCUMENTS
+# 65. DOCUMENT ROADMAP
 
-Feature architecture harus memungkinkan penambahan:
+Prioritas roadmap dokumen (lihat §75 untuk bagaimana dokumen-dokumen ini
+saling terhubung sebagai satu rantai):
 
-```text id="x7q2n5"
-Proforma Invoice
-Quotation
-Certificate of Origin
-Delivery Note
-Purchase Order
-Commercial Contract
+## Core
+
+```text id="x7q2n5-core"
+1. Commercial Invoice     -- Built
+2. Packing List           -- Built
+3. Proforma Invoice       -- Built (§76, doc_type di tabel invoices)
 ```
 
-tanpa mengubah authentication system.
+## Sales / Order
+
+```text id="x7q2n5-sales"
+4. Purchase Order         -- Built (§62)
+5. Sales Order            -- Built (§77)
+6. Delivery Note          -- Built (§79)
+```
+
+## Shipping
+
+```text id="x7q2n5-ship"
+7. Shipping Instruction   -- Built (§78)
+8. Delivery Order         -- Belakangan (belum dibangun, prioritas rendah)
+```
+
+## Eksplisit DI LUAR SCOPE
+
+**Shipping Label** — sengaja TIDAK dibangun dan tidak direncanakan.
+Shipping Label (label pengiriman fisik yang ditempel di paket, biasanya
+berisi barcode/tracking number carrier) adalah tanggung jawab perusahaan
+kurir/ekspedisi (DHL, FedEx, JNE, dll) yang punya sistem dan format
+label sendiri — bukan dokumen yang dibuat eksportir/importir seperti
+dokumen-dokumen lain di atas. Feature architecture (§9-16) tetap
+modular dan bisa menambah dokumen baru kapan saja, tapi Shipping Label
+secara sadar dikeluarkan dari roadmap ini.
+
+Kandidat lain yang belum masuk prioritas (boleh ditambah nanti tanpa
+mengubah authentication system, lihat §71):
+
+```text id="x7q2n5-later"
+Quotation
+Certificate of Origin
+Commercial Contract
+```
 
 ---
 
@@ -1732,6 +1810,58 @@ PDF
 
 ---
 
+## PHASE 9 — FREEMIUM ONBOARDING (GUEST MODE) — §73
+
+- Guest mode di `invoice.html` & `packinglist.html`
+- PDF preview watermark untuk guest (client-side)
+- Modal signup ringan di titik klik Download
+- Draft otomatis tersimpan ke account baru setelah signup/login
+- Landing page (`index.html`) diubah jadi halaman pilih jenis dokumen,
+  `login.html` dipisah jadi halaman tersendiri
+
+---
+
+## PHASE 10 — ACCOUNT ACTIVATION (PENDING STATUS) — §74
+
+- Status `pending` di antara `active` dan `locked`
+- Self-signup mulai dari `pending`, bukan langsung `active`
+- PDF watermark selama pending, hilang setelah Developer klik Activate
+- `is_account_usable()` — insert dokumen tetap boleh selama tidak `locked`
+
+---
+
+## PHASE 11 — PROFORMA INVOICE — §76
+
+- Kolom `doc_type` di tabel `invoices` (`commercial` / `proforma`)
+- Prefix nomor & judul PDF berbeda per `doc_type`
+- Tombol Convert to Commercial Invoice
+
+---
+
+## PHASE 12 — PURCHASE ORDER & SALES ORDER — §62, §77
+
+- Tabel `purchase_orders` + `purchase_order_items`
+- Tabel `sales_orders` + `sales_order_items`
+- Feature access manual per customer (bukan free tier)
+
+---
+
+## PHASE 13 — SHIPPING INSTRUCTION & DELIVERY NOTE — §78, §79
+
+- Tabel `shipping_instructions` + `shipping_instruction_items`
+- Tabel `delivery_notes` + `delivery_note_items`
+- Dokumen non-komersial (tanpa harga)
+
+---
+
+## PHASE 14 — DOCUMENT CHAIN — §75
+
+- Kolom `source_<dokumen>_id` di tiap tabel dokumen (nullable)
+- "Load from &lt;dokumen sumber&gt;" antar halaman create
+- Komponen "Document Trail" (⬆ upstream / ⬇ downstream) di modal History
+
+---
+
 # 68. MVP SUCCESS CRITERIA
 
 MVP dianggap berhasil jika:
@@ -1770,6 +1900,17 @@ MVP dianggap berhasil jika:
 32. Tidak membutuhkan D1.
 33. Tidak membutuhkan React.
 34. Arsitektur siap menerima fitur premium di masa depan.
+35. Guest dapat membuat Invoice/Packing List tanpa login.
+36. Guest diminta membuat account hanya pada saat klik Download, bukan di awal form.
+37. Draft guest otomatis tersimpan ke account baru setelah signup, tanpa data hilang.
+38. Self-signup account otomatis mendapat feature `invoice` + `packing_list` aktif, status awal `pending`.
+39. Admin-created account tetap default feature OFF dan status `active`, tidak terpengaruh perubahan self-signup.
+40. Account `pending` tetap bisa login, isi form, dan simpan dokumen — hanya PDF yang berwatermark.
+41. Developer dapat meng-klik Activate untuk mengubah `pending` menjadi `active`, menghilangkan watermark.
+42. Proforma Invoice dapat dibuat dan di-convert menjadi Commercial Invoice.
+43. Purchase Order dan Sales Order dapat dibuat, disimpan, dan menghasilkan PDF.
+44. Shipping Instruction dan Delivery Note dapat dibuat, disimpan, dan menghasilkan PDF.
+45. Dokumen di sepanjang rantai (PO→SO→Invoice→Packing List→SI→DN) dapat dibuat dengan "Load from" dokumen sebelumnya, tanpa mengetik ulang data yang sama.
 
 ---
 
@@ -1812,22 +1953,19 @@ Feature baru dapat ditambahkan dan dijual tanpa membongkar sistem authentication
                     └─────────┬─────────┘
                               │
                      Account Status
-                       Active / Locked
+                   Active / Pending / Locked
                               │
                               ▼
                     ┌───────────────────┐
                     │ Feature Access    │
                     └─────────┬─────────┘
                               │
-          ┌───────────────────┼───────────────────┐
-          │                   │                   │
-       Invoice             Packing List       Future Features
-          │                   │                   │
-          │                   │          ┌────────┼─────────┐
-          │                   │          │        │         │
-          │                   │         PO    Shipping   Duty/Tax
-          │                   │
-          └───────────────────┼───────────────────┘
+          ┌─────────┬─────────┬─────────┬─────────┬─────────┐
+          │         │         │         │         │         │
+       Invoice   Packing   Purchase  Sales     Shipping   Delivery
+       (+Proforma) List     Order    Order   Instruction    Note
+                              │
+                    Future: Shipping Rate, Duty/Tax
                               │
                               ▼
                     ┌───────────────────┐
@@ -1846,7 +1984,7 @@ Feature baru dapat ditambahkan dan dijual tanpa membongkar sistem authentication
 
 # 71. CORE STRATEGY
 
-MVP harus tetap kecil:
+MVP awal (sudah lewat — lihat §68 kriteria sukses) tetap kecil:
 
 ```text id="w8m3q5"
 AUTH
@@ -1858,25 +1996,22 @@ PACKING LIST
 PDF
 ```
 
-Tetapi database dan access-control harus disiapkan untuk:
+Roadmap dokumen (§65) sudah berkembang lebih jauh dari MVP awal — lihat
+status "Built" per dokumen di §65, §76-79. Sisa fitur yang memang masih
+future (belum ada rencana build konkret):
 
 ```text id="x2p7n9"
-PO
+SHIPPING RATE CHECKER
 +
-SHIPPING RATE
+DUTY & TAX CALCULATOR
 +
-DUTY & TAX
-+
-PROFORMA
-+
-QUOTATION
-+
-OTHER PREMIUM FEATURES
+OTHER PREMIUM FEATURES (§61)
 ```
 
 Dengan demikian **fitur belum dibuat ≠ struktur belum disiapkan**.
-
-Fitur dapat ditambahkan kemudian tanpa harus melakukan redesign besar terhadap account system.
+Fitur dapat ditambahkan kemudian tanpa harus melakukan redesign besar
+terhadap account system — terbukti dari 5 dokumen baru (§76-79) yang
+ditambahkan tanpa mengubah authentication/RLS model inti.
 
 ---
 
@@ -1893,3 +2028,283 @@ Fitur dapat ditambahkan kemudian tanpa harus melakukan redesign besar terhadap a
 ### Positioning
 
 > **One simple tool for your shipping documentation.**
+
+---
+
+# 73. FREEMIUM ONBOARDING (GUEST MODE)
+
+## Prinsip
+
+> **Show the value first, ask for account later.**
+
+Target user CargoDoc adalah orang yang ingin cepat membuat dokumen
+pengiriman. Friksi di awal (login/signup, form panjang) harus seminimal
+mungkin. Signup baru diminta di titik user sudah mendapat value — yaitu
+saat klik **Download**, bukan sebelum mulai isi form.
+
+## Flow
+
+```text id="73-flow"
+Landing page (index.html — pilih jenis dokumen, TANPA login)
+ ↓
+Isi form (Invoice atau Packing List)
+ ↓
+Klik "Preview & Download PDF"
+ ↓
+PDF watermark digenerate client-side (belum ke server)
+ ↓
+Modal muncul: "Your document is ready — create a free account
+              to save & download the clean version"
+ ↓
+Signup (email + password) ATAU Sign in kalau sudah punya akun
+ ↓
+Draft (masih di memory browser) otomatis dikirim ke Supabase
+ ↓
+Dokumen tersimpan (RLS aktif, user_id = auth.uid())
+ ↓
+Account baru berstatus PENDING (§74) — PDF final TETAP watermark
+sampai Developer klik Activate
+```
+
+## Guest Draft — Prinsip Keamanan
+
+Draft dokumen milik guest hanya boleh hidup di memori browser, **tidak
+pernah dianggap sumber otoritas**. Yang menentukan hak akses selalu
+Supabase Auth + RLS, bukan data di sisi client. Dilarang keras pola
+seperti `localStorage.role = "admin"` — user bisa mengubahnya sendiri
+lewat DevTools. Begitu user signup, draft **wajib divalidasi ulang lewat
+RLS** saat disimpan ke database.
+
+## Membedakan Self-Signup vs Admin-Created
+
+Edge Function `admin-create-user` menandai user yang ia buat dengan
+`app_metadata: { created_by: 'admin' }`. Trigger `handle_new_user`
+mengecek metadata ini:
+
+| Jalur                          | Status awal | Default Feature Access              |
+|---------------------------------|-------------|---------------------------------------|
+| Self-signup (guest mode)        | `pending`   | `invoice` + `packing_list` = ON       |
+| Admin-created (Edge Function)   | `active`    | Semua OFF (Developer enable manual)   |
+
+## Guest Mode Berlaku Untuk
+
+- Commercial Invoice (`invoice.html`)
+- Packing List (`packinglist.html`)
+
+Fitur lain (Purchase Order, Sales Order, Delivery Note, Shipping
+Instruction) **tidak** guest mode — semuanya butuh login + feature yang
+di-enable Developer secara manual per customer (bukan bagian free tier).
+Master Data, History, dan Admin Panel juga tetap butuh login.
+
+## Batasan MVP
+
+- Free tier (hasil self-signup): unlimited dokumen untuk MVP.
+- Verifikasi email tidak diwajibkan (prioritas minim friksi). Dapat
+  diaktifkan lewat pengaturan Supabase Auth kapan saja tanpa ubah kode.
+
+---
+
+# 74. ACCOUNT ACTIVATION (PENDING STATUS)
+
+## Kenapa Ada
+
+Guest mode (§73) bikin siapa saja bisa langsung pakai `invoice` +
+`packing_list` tanpa admin approve dulu — bagus untuk minim friksi,
+tapi berarti Developer butuh cara untuk tetap memverifikasi
+pembayaran/kelayakan account baru **sebelum** user dapat PDF final yang
+bersih.
+
+## Flow
+
+```text id="74-flow"
+Self-signup selesai (§73) -> status = PENDING
+ ↓
+User tetap bisa: login, isi form, save dokumen (draft maupun final)
+ ↓
+User klik Download -> PDF TETAP berwatermark (selama masih pending)
+ ↓
+User bayar / hubungi admin di luar aplikasi
+ ↓
+Developer cek pembayaran, buka Admin Panel
+ ↓
+Developer klik tombol "Activate" pada baris user itu -> status = ACTIVE
+ ↓
+Download berikutnya -> PDF bersih, tanpa watermark
+```
+
+## Yang TIDAK Diblokir Selama Pending
+
+Prinsip "no unnecessary restrictions" (§69) tetap berlaku — status
+`pending` **hanya** memengaruhi watermark PDF, bukan kemampuan pakai
+aplikasi:
+
+- Boleh login
+- Boleh isi & simpan dokumen (draft maupun final) ke database
+- Boleh edit/duplicate/delete dokumen sendiri
+- Boleh lihat History
+
+Satu-satunya yang diblokir: PDF final tanpa watermark.
+
+## Yang Diblokir Kalau LOCKED (beda dari PENDING)
+
+`locked` (§8) tetap berlaku seperti sebelumnya — user tidak bisa
+menggunakan aplikasi sama sekali, termasuk menyimpan dokumen baru.
+`is_account_usable()` (dipakai RLS insert) cuma menolak status
+`locked`, bukan mensyaratkan `active` secara eksak — supaya `pending`
+tetap bisa menyimpan data.
+
+---
+
+# 75. DOCUMENT CHAIN (LINKING)
+
+## Prinsip
+
+User input data sekali, dokumen berikutnya di rantai bisa **"Load from
+&lt;dokumen sumber&gt;"** — otomatis isi party info & items, alih-alih
+ketik ulang dari nol.
+
+## Rantai Dokumen
+
+```text id="75-chain"
+Purchase Order (§62)
+   │ items only
+   ▼
+Sales Order (§77)
+   │ Customer -> Receiver+BillTo, Ship To -> Ship To, items
+   ▼
+Commercial Invoice (§18) / Proforma Invoice (§76)
+   │ Shipper/Receiver, items -> packages
+   ▼
+Packing List (§41)
+   │ Shipper -> Shipper, Receiver -> Consignee, packages -> cargo
+   ▼
+Shipping Instruction (§78)
+   │ Shipper -> From, Consignee -> Deliver To, cargo -> items
+   ▼
+Delivery Note (§79)
+```
+
+Tiap hop cuma mem-bawa data yang **masuk akal secara bisnis** — kalau
+hubungannya tidak jelas (misalnya PO ke SO: barang yang dibeli belum
+tentu dijual ke customer yang sama), cuma items yang ikut ter-copy,
+party info dikosongkan supaya user isi manual (bukan ditebak salah).
+
+## Implementasi
+
+Tiap tabel dokumen (kecuali Purchase Order, yang jadi titik awal rantai)
+punya kolom `source_<dokumen_sebelumnya>_id`, nullable, `on delete set
+null` — dokumen tetap bisa dibuat dari nol tanpa sumber. Ditampilkan di
+UI lewat komponen "Document Trail" pada modal View di setiap halaman
+History: panah ⬆ ke dokumen sumber, panah ⬇ ke dokumen turunan (1 hop
+tiap arah, bukan breadcrumb penuh).
+
+---
+
+# 76. PROFORMA INVOICE
+
+**Status: Built** (roadmap Core #3).
+
+Proforma Invoice pakai tabel `invoices` yang sama dengan Commercial
+Invoice (§18) — field-nya ~95% identik — dibedakan lewat kolom
+`doc_type` (`'commercial'` / `'proforma'`), bukan tabel/halaman
+terpisah. Bedanya cuma:
+
+- Judul PDF: "PROFORMA INVOICE" vs "COMMERCIAL INVOICE"
+- Prefix nomor: `PI-{YEAR}-{SEQ}` vs `INV-{YEAR}-{SEQ}`
+- Field tambahan: `valid_until` (masa berlaku quotation, khusus proforma)
+- Tombol **Convert to Commercial Invoice** (mode edit, khusus dokumen
+  proforma) — mengubah `doc_type` jadi `commercial` tanpa bikin
+  dokumen baru, nomor invoice tetap sama (bukan re-generate PI->INV)
+
+Tetap tercover feature `invoice` yang sama — tidak perlu toggle admin
+baru, dan ikut guest mode (§73) karena satu halaman (`invoice.html`)
+dengan Commercial Invoice.
+
+---
+
+# 77. SALES ORDER
+
+**Status: Built** (roadmap Sales/Order #5).
+
+Kebalikan dari Purchase Order (§62): PO = beli dari Supplier, SO = jual
+ke Customer. Field & pola RLS 1:1 sama dengan Purchase Order, cuma
+"Supplier" → **Customer**, dan "Deliver To" → **Ship To**.
+
+Flow:
+
+```text id="77-flow"
+Customer + Ship To (opsional)
+ ↓
+Items (description, SKU, qty, unit, unit price)
+ ↓
+Terms (payment, delivery, reference PO number dari customer)
+ ↓
+Sales Order tersimpan (nomor otomatis SO-{YEAR}-{SEQ})
+ ↓
+PDF
+```
+
+Feature access: `sales_order` — sama seperti Purchase Order, **tidak**
+otomatis aktif untuk self-signup, tidak ada guest mode.
+
+Bisa dibuat dari Purchase Order (items saja, §75), dan jadi sumber untuk
+Commercial Invoice (Customer → Receiver+BillTo, Ship To → Ship To,
+items).
+
+---
+
+# 78. SHIPPING INSTRUCTION
+
+**Status: Built** (roadmap Shipping #7).
+
+Instruksi dari Shipper ke Forwarder/Carrier tentang bagaimana sebuah
+shipment harus diproses & didokumentasikan — dipakai carrier untuk
+menerbitkan Bill of Lading. **Bukan dokumen komersial** — tidak
+menampilkan harga, cuma detail muatan & routing.
+
+Field utama:
+
+```text id="78-fields"
+Booking & Carrier: booking number, carrier, vessel/voyage,
+                    mode of transport, shipment mode (FCL/LCL/Air),
+                    container type & count
+Routing: port of loading, port of discharge,
+         place of delivery, final destination
+Terms: freight terms (Prepaid/Collect), incoterms,
+       B/L type, jumlah original B/L
+Parties: Shipper, Consignee, Notify Party (opsional)
+Cargo items: description, HS code, jumlah & jenis package,
+             qty, gross/net weight, CBM
+```
+
+Feature access: `shipping_instruction` — tidak ada guest mode.
+
+Dibuat dari Packing List (Shipper → Shipper, Receiver → Consignee,
+packages → cargo items, §75), dan jadi sumber untuk Delivery Note
+(Shipper → From, Consignee → Deliver To).
+
+---
+
+# 79. DELIVERY NOTE
+
+**Status: Built** (roadmap Sales/Order #6).
+
+Bukti serah-terima barang secara fisik — dibawa bersama barang saat
+dikirim, ditandatangani penerima sebagai bukti barang sudah diterima.
+Sama seperti Shipping Instruction, **bukan dokumen komersial** — tidak
+menampilkan harga, cuma deskripsi & jumlah barang.
+
+Field utama:
+
+```text id="79-fields"
+Delivery: driver name, vehicle number, vehicle type
+From (pengirim/gudang): snapshot pola sama dengan Shipper di dokumen lain
+Deliver To (penerima): snapshot
+Bukti terima (opsional, diisi setelah barang diterima):
+  received by, received date
+Items: description, SKU, package count & type, qty, unit
+```
+
+Feature access: `delivery_note` — tidak ada guest mode.
+
+Titik akhir rantai dokumen (§75) — dibuat dari Shipping Instruction.

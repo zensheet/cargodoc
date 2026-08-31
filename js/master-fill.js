@@ -36,6 +36,9 @@ if (typeof esc !== 'function') {
   attachCompanyFill('f-supplier_name', 'supplier'); // purchase-order.html
   attachCompanyFill('f-customer_name', 'customer'); // sales-order.html
   attachCompanyFill('f-from_name', 'supplier'); // delivery-note.html (biasanya gudang/kita sendiri)
+  attachCompanyFill('f-deliver_to_name', 'customer'); // delivery-note.html
+  attachCompanyFill('f-consignee_name', 'customer'); // shipping-instruction.html
+  attachCompanyFill('f-notify_party_name', 'customer'); // shipping-instruction.html (opsional)
   attachProductFill();
 })();
 
