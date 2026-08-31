@@ -112,11 +112,13 @@ async function viewPo(id) {
     </tr>`).join('');
 
   document.getElementById('modal-title').textContent = po.po_number;
+  const trailHtml = await renderDocTrail('po', po); // js/doc-trail.js
   document.getElementById('modal-body').innerHTML = `
     <p><strong>Date:</strong> ${esc(po.po_date || '—')} &nbsp;
        <strong>Status:</strong> ${esc(po.status)}</p>
     <p><strong>Supplier:</strong> ${esc(po.supplier_name || '—')}
        ${po.supplier_pic ? `(${esc(po.supplier_pic)})` : ''}</p>
+    ${trailHtml}
     <table class="data-table" style="margin-top:10px;">
       <thead><tr><th>Description</th><th>SKU</th><th style="text-align:right;">Qty</th>
         <th style="text-align:right;">Unit Price</th><th style="text-align:right;">Amount</th></tr></thead>

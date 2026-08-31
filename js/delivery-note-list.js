@@ -110,6 +110,7 @@ async function viewDn(id) {
     </tr>`).join('');
 
   document.getElementById('modal-title').textContent = dn.dn_number;
+  const trailHtml = await renderDocTrail('dn', dn); // js/doc-trail.js
   document.getElementById('modal-body').innerHTML = `
     <p><strong>Date:</strong> ${esc(dn.dn_date || '—')} &nbsp;
        <strong>Status:</strong> ${esc(dn.status)}</p>
@@ -117,6 +118,7 @@ async function viewDn(id) {
     <p><strong>Deliver To:</strong> ${esc(dn.deliver_to_name || '—')}
        ${dn.deliver_to_pic ? `(${esc(dn.deliver_to_pic)})` : ''}</p>
     ${dn.vehicle_number ? `<p><strong>Vehicle:</strong> ${esc(dn.vehicle_number)} ${dn.driver_name ? `— Driver: ${esc(dn.driver_name)}` : ''}</p>` : ''}
+    ${trailHtml}
     <table class="data-table" style="margin-top:10px;">
       <thead><tr><th>Description</th><th>SKU</th><th style="text-align:right;">Pkgs</th>
         <th style="text-align:right;">Qty</th></tr></thead>

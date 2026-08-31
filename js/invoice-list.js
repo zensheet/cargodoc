@@ -126,12 +126,14 @@ async function viewInvoice(id) {
     </tr>`).join('');
 
   document.getElementById('modal-title').textContent = inv.invoice_number;
+  const trailHtml = await renderDocTrail('invoice', inv); // js/doc-trail.js
   document.getElementById('modal-body').innerHTML = `
     <p><strong>Date:</strong> ${esc(inv.invoice_date || '—')} &nbsp;
        <strong>Status:</strong> ${esc(inv.status)} &nbsp;
        <strong>Type:</strong> ${esc(inv.shipment_type || '—')}</p>
     <p><strong>Receiver:</strong> ${esc(inv.receiver_name || '—')}
        ${inv.receiver_pic ? `(${esc(inv.receiver_pic)})` : ''}</p>
+    ${trailHtml}
     <table class="data-table" style="margin-top:10px;">
       <thead><tr><th>Description</th><th>HS Code</th><th style="text-align:right;">Qty</th>
         <th style="text-align:right;">Unit Price</th><th style="text-align:right;">Amount</th></tr></thead>

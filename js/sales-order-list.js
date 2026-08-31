@@ -112,11 +112,13 @@ async function viewSo(id) {
     </tr>`).join('');
 
   document.getElementById('modal-title').textContent = so.so_number;
+  const trailHtml = await renderDocTrail('so', so); // js/doc-trail.js
   document.getElementById('modal-body').innerHTML = `
     <p><strong>Date:</strong> ${esc(so.so_date || '—')} &nbsp;
        <strong>Status:</strong> ${esc(so.status)}</p>
     <p><strong>Customer:</strong> ${esc(so.customer_name || '—')}
        ${so.customer_pic ? `(${esc(so.customer_pic)})` : ''}</p>
+    ${trailHtml}
     <table class="data-table" style="margin-top:10px;">
       <thead><tr><th>Description</th><th>SKU</th><th style="text-align:right;">Qty</th>
         <th style="text-align:right;">Unit Price</th><th style="text-align:right;">Amount</th></tr></thead>

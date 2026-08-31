@@ -116,12 +116,14 @@ async function viewPl(id) {
     </tr>`).join('');
 
   document.getElementById('modal-title').textContent = pl.packing_list_number;
+  const trailHtml = await renderDocTrail('pl', pl); // js/doc-trail.js
   document.getElementById('modal-body').innerHTML = `
     <p><strong>Date:</strong> ${esc(pl.packing_list_date || '—')} &nbsp;
        <strong>Status:</strong> ${esc(pl.status)}</p>
     <p><strong>Receiver:</strong> ${esc(pl.receiver_name || '—')}
        ${pl.receiver_pic ? `(${esc(pl.receiver_pic)})` : ''}</p>
     ${pl.marks_numbers ? `<p><strong>Marks/Notes:</strong> ${esc(pl.marks_numbers)}</p>` : ''}
+    ${trailHtml}
     <table class="data-table" style="margin-top:10px;">
       <thead><tr><th>Pkg</th><th>Description</th><th style="text-align:right;">Qty</th>
         <th style="text-align:right;">Net</th><th style="text-align:right;">Gross</th>

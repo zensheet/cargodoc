@@ -110,6 +110,7 @@ async function viewSi(id) {
     </tr>`).join('');
 
   document.getElementById('modal-title').textContent = si.si_number;
+  const trailHtml = await renderDocTrail('si', si); // js/doc-trail.js
   document.getElementById('modal-body').innerHTML = `
     <p><strong>Date:</strong> ${esc(si.si_date || '—')} &nbsp;
        <strong>Status:</strong> ${esc(si.status)}</p>
@@ -118,6 +119,7 @@ async function viewSi(id) {
        ${si.consignee_pic ? `(${esc(si.consignee_pic)})` : ''}</p>
     <p><strong>Route:</strong> ${esc(si.port_of_loading || '—')} → ${esc(si.port_of_discharge || '—')}
        ${si.final_destination ? `→ ${esc(si.final_destination)}` : ''}</p>
+    ${trailHtml}
     <table class="data-table" style="margin-top:10px;">
       <thead><tr><th>Description</th><th>HS Code</th><th style="text-align:right;">Pkgs</th>
         <th style="text-align:right;">Gross Wt</th><th style="text-align:right;">CBM</th></tr></thead>
