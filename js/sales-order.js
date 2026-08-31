@@ -2,25 +2,30 @@
 // SALES ORDER — form logic, items, kalkulasi, save
 // Mengikuti pola persis js/purchase-order.js (kebalikannya: kita JUAL ke
 // Customer, bukan beli dari Supplier), yang mengikuti pola js/invoice.js:
-//   - Tidak guest mode (feature 'sales_order' tidak auto-enable untuk
-//     self-signup — lihat sql/18-sales-order.sql — jadi requireFeature()
-//     biasa, bukan requireFeatureOrGuest())
-//   - PRD §74 tetap berlaku: akun 'pending' -> PDF watermark
+//   - Guest mode AKTIF (lihat sql/19-guest-mode-po-so.sql — feature
+//     'sales_order' sekarang ikut auto-enable untuk self-signup,
+//     ditampilkan juga di landing page tanpa login)
+//   - PRD §74 tetap berlaku: akun 'pending'/guest -> PDF watermark
 //   - Nomor otomatis SO-{YEAR}-{SEQ}, editable
 //   - Edit existing SO via ?id=<uuid> di URL
 // ============================================
 
 let EDIT_ID = null; // null = create baru; berisi id = mode edit
+let IS_GUEST = false; // true = belum login (PRD §73 guest mode)
 
 (async function initSalesOrder() {
-  const { allowed, session } = await requireFeature('sales_order');
-  if (!session) return; // requireFeature() sudah redirect ke /login.html
-  if (!allowed) { location.href = '/app.html'; return; }
+  const { allowed, session, guest } = await requireFeatureOrGuest('sales_order');
+  if (!allowed) { location.href = '/app.html'; return; } // login tapi fitur di-lock
 
-  document.getElementById('user-name').textContent = session.profile.email;
-  // PRD §74: customer sudah login tapi akunnya masih 'pending'
-  if (session.profile.status === 'pending') {
-    document.getElementById('pending-warning').hidden = false;
+  IS_GUEST = guest;
+  if (guest) {
+    renderGuestHeader(); // js/guest-auth.js
+  } else {
+    document.getElementById('user-name').textContent = session.profile.email;
+    // PRD §74: customer sudah login tapi akunnya masih 'pending'
+    if (session.profile.status === 'pending') {
+      document.getElementById('pending-warning').hidden = false;
+    }
   }
 
   EDIT_ID = new URLSearchParams(location.search).get('id');
@@ -293,6 +298,15 @@ async function saveOnly() {
   const data = collectSalesOrder();
   softValidation(data);
 
+  if (IS_GUEST) {
+    guestAuthGate(async () => {
+      await persistSalesOrder(data, 'draft');
+      alert('✅ Account created & sales order saved as draft.');
+      location.href = '/sales-order-list.html';
+    });
+    return;
+  }
+
   const btn = document.getElementById('btn-save-only');
   btn.disabled = true; btn.textContent = EDIT_ID ? 'Updating...' : 'Saving...';
   try {
@@ -308,6 +322,28 @@ async function saveOnly() {
 async function saveAndDownload() {
   const data = collectSalesOrder();
   softValidation(data);
+
+  if (IS_GUEST) {
+    // 1) Preview watermark client-side -- TIDAK disimpan ke DB (PRD §73)
+    const previewSo = { ...data.sales_order, so_number: data.sales_order.so_number || 'PREVIEW' };
+    generateSalesOrderPDF({ ...data, sales_order: previewSo, branding: null, watermark: true });
+
+    // 2) Modal signup/login ringan. Draft (`data`) baru benar-benar
+    //    disimpan ke DB SETELAH auth sukses.
+    guestAuthGate(async () => {
+      const saved = await persistSalesOrder(data, 'final');
+      const branding = await getBranding();
+      // PRD §74: baru signup -> status masih 'pending', jadi PDF-nya
+      // tetap watermark sampai admin klik "Activate".
+      const watermark = accountNeedsWatermark(window.APP_SESSION);
+      await generateSalesOrderPDF({ ...data, sales_order: saved, branding, watermark });
+      alert(watermark
+        ? '✅ Account created & sales order saved.\n\nYour PDF still has a watermark — it will be removed once the administrator activates your account.'
+        : '✅ Account created & sales order saved. PDF downloaded.');
+      location.href = '/sales-order-list.html';
+    });
+    return;
+  }
 
   const btn = document.getElementById('btn-save');
   btn.disabled = true; btn.textContent = EDIT_ID ? 'Updating...' : 'Saving...';

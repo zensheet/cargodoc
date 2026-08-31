@@ -1,25 +1,30 @@
 // ============================================
 // PURCHASE ORDER — form logic, items, kalkulasi, save
-// Mengikuti pola persis js/invoice.js (PRD §18-32), disederhanakan:
-//   - Tidak guest mode (feature 'purchase_order' tidak auto-enable untuk
-//     self-signup — lihat sql/17-purchase-order.sql — jadi requireFeature()
-//     biasa, bukan requireFeatureOrGuest())
-//   - PRD §74 tetap berlaku: akun 'pending' -> PDF watermark
+// Mengikuti pola persis js/invoice.js (PRD §18-32):
+//   - Guest mode AKTIF (lihat sql/19-guest-mode-po-so.sql — feature
+//     'purchase_order' sekarang ikut auto-enable untuk self-signup,
+//     ditampilkan juga di landing page tanpa login)
+//   - PRD §74 tetap berlaku: akun 'pending'/guest -> PDF watermark
 //   - Nomor otomatis PO-{YEAR}-{SEQ}, editable
 //   - Edit existing PO via ?id=<uuid> di URL
 // ============================================
 
 let EDIT_ID = null; // null = create baru; berisi id = mode edit
+let IS_GUEST = false; // true = belum login (PRD §73 guest mode)
 
 (async function initPurchaseOrder() {
-  const { allowed, session } = await requireFeature('purchase_order');
-  if (!session) return; // requireFeature() sudah redirect ke /login.html
-  if (!allowed) { location.href = '/app.html'; return; }
+  const { allowed, session, guest } = await requireFeatureOrGuest('purchase_order');
+  if (!allowed) { location.href = '/app.html'; return; } // login tapi fitur di-lock
 
-  document.getElementById('user-name').textContent = session.profile.email;
-  // PRD §74: customer sudah login tapi akunnya masih 'pending'
-  if (session.profile.status === 'pending') {
-    document.getElementById('pending-warning').hidden = false;
+  IS_GUEST = guest;
+  if (guest) {
+    renderGuestHeader(); // js/guest-auth.js
+  } else {
+    document.getElementById('user-name').textContent = session.profile.email;
+    // PRD §74: customer sudah login tapi akunnya masih 'pending'
+    if (session.profile.status === 'pending') {
+      document.getElementById('pending-warning').hidden = false;
+    }
   }
 
   EDIT_ID = new URLSearchParams(location.search).get('id');
@@ -292,6 +297,15 @@ async function saveOnly() {
   const data = collectPurchaseOrder();
   softValidation(data);
 
+  if (IS_GUEST) {
+    guestAuthGate(async () => {
+      await persistPurchaseOrder(data, 'draft');
+      alert('✅ Account created & purchase order saved as draft.');
+      location.href = '/purchase-order-list.html';
+    });
+    return;
+  }
+
   const btn = document.getElementById('btn-save-only');
   btn.disabled = true; btn.textContent = EDIT_ID ? 'Updating...' : 'Saving...';
   try {
@@ -307,6 +321,29 @@ async function saveOnly() {
 async function saveAndDownload() {
   const data = collectPurchaseOrder();
   softValidation(data);
+
+  if (IS_GUEST) {
+    // 1) Preview watermark client-side -- TIDAK disimpan ke DB (PRD §73)
+    const previewPo = { ...data.purchase_order, po_number: data.purchase_order.po_number || 'PREVIEW' };
+    generatePurchaseOrderPDF({ ...data, purchase_order: previewPo, branding: null, watermark: true });
+
+    // 2) Modal signup/login ringan. Draft (`data`) baru benar-benar
+    //    disimpan ke DB SETELAH auth sukses -- statusnya 'pending' dulu
+    //    (PRD §74), jadi PDF tetap watermark sampai admin mengaktivasi.
+    guestAuthGate(async () => {
+      const saved = await persistPurchaseOrder(data, 'final');
+      const branding = await getBranding();
+      // PRD §74: baru signup -> status masih 'pending', jadi PDF-nya
+      // tetap watermark sampai admin klik "Activate".
+      const watermark = accountNeedsWatermark(window.APP_SESSION);
+      await generatePurchaseOrderPDF({ ...data, purchase_order: saved, branding, watermark });
+      alert(watermark
+        ? '✅ Account created & purchase order saved.\n\nYour PDF still has a watermark — it will be removed once the administrator activates your account.'
+        : '✅ Account created & purchase order saved. PDF downloaded.');
+      location.href = '/purchase-order-list.html';
+    });
+    return;
+  }
 
   const btn = document.getElementById('btn-save');
   btn.disabled = true; btn.textContent = EDIT_ID ? 'Updating...' : 'Saving...';
