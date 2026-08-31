@@ -78,6 +78,18 @@ sebelumnya (banyak pakai `references` / `ALTER TABLE ... ADD COLUMN`).
     tetap tercover oleh feature `invoice` yang sama (tidak perlu toggle
     admin baru).
 
+13. **`17-purchase-order.sql`**
+    Fitur baru Purchase Order (roadmap #4): tabel `purchase_orders` +
+    `purchase_order_items` (mandiri, bukan doc_type di tabel invoices —
+    field-nya cukup beda: Supplier bukan Shipper/Receiver, tidak ada
+    freight/insurance). RLS mengikuti pola persis invoices/invoice_items,
+    termasuk gate `is_account_usable()` + `has_feature('purchase_order')`
+    di insert (butuh langkah 10 sudah dijalankan). Mengaktifkan feature
+    `purchase_order` (sebelumnya `active=false`/"coming soon" di seed
+    langkah 2). **Catatan:** beda dari `invoice`/`packing_list`, feature
+    ini TIDAK auto-enable untuk self-signup — admin perlu enable manual
+    per customer di `admin.html`, sama seperti akun admin-created.
+
 ---
 
 Catatan: tabel `customers` dan `suppliers` yang sempat ada di draft awal

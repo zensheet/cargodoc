@@ -206,6 +206,121 @@ function renderCustomFieldsBlock(pdf, y, customFields, W, M) {
 }
 
 // ============================================
+// PURCHASE ORDER PDF
+// ============================================
+
+async function generatePurchaseOrderPDF(data) {
+  const { purchase_order: po, supplier, deliverTo, items, branding } = data;
+  const pdf = new jspdf.jsPDF({ unit: 'mm', format: 'a4' });
+  const W = 210, M = 14;
+  let y = await drawDocHeader(pdf, 'PURCHASE ORDER', po.po_number, po.po_date, branding, W, M);
+
+  const block = (title, obj, x) => {
+    let yy = y;
+    pdf.setTextColor(60); pdf.setFontSize(8); pdf.setFont(undefined, 'bold');
+    pdf.text(title, x, yy); yy += 5;
+    pdf.setFont(undefined, 'normal'); pdf.setFontSize(9); pdf.setTextColor(0);
+    const LABELS = {
+      company_name: 'Company', pic: 'PIC', address: 'Address',
+      city: 'City', country: 'Country', phone: 'Phone', email: 'Email',
+    };
+    Object.entries(obj).forEach(([key, val]) => {
+      if (val) { pdf.text(`${LABELS[key] || key}: ${val}`, x, yy, { maxWidth: 80 }); yy += 5; }
+    });
+    return yy;
+  };
+  const yL = block('SUPPLIER', supplier, M);
+  // Deliver To (Empty Field Rule — kalau kosong, kolom kanan gak digambar)
+  const yR = deliverTo?.company_name ? block('DELIVER TO', deliverTo, W / 2 + 4) : y;
+  y = Math.max(yL, yR) + 6;
+
+  // PO details (Empty Field Rule)
+  const details = [
+    ['Currency', po.currency], ['Payment Terms', po.payment_terms],
+    ['Delivery Terms', po.delivery_terms],
+    ['Expected Delivery', po.expected_delivery_date],
+    ['Reference', po.reference_number],
+  ].filter(([, v]) => v);
+  if (details.length) {
+    pdf.setFontSize(8);
+    const colW = (W - 2 * M) / 2;
+    details.forEach(([label, val], i) => {
+      const col = i % 2, row = Math.floor(i / 2);
+      const x = M + col * colW;
+      const yy = y + row * 5;
+      pdf.setFont(undefined, 'bold'); pdf.setTextColor(60);
+      pdf.text(`${label}:`, x, yy);
+      pdf.setFont(undefined, 'normal'); pdf.setTextColor(0);
+      pdf.text(String(val), x + 32, yy, { maxWidth: colW - 34 });
+    });
+    y += Math.ceil(details.length / 2) * 5 + 6;
+  }
+
+  // Items table
+  pdf.setFontSize(8); pdf.setFont(undefined, 'bold');
+  const cols = [
+    { label: 'DESCRIPTION', x: M, w: 66 },
+    { label: 'SKU', x: M + 68, w: 20 },
+    { label: 'QTY', x: 122, w: 14, align: 'right' },
+    { label: 'UNIT', x: 138, w: 14 },
+    { label: 'UNIT PRICE', x: 156, w: 20, align: 'right' },
+    { label: 'AMOUNT', x: W - M - 20, w: 20, align: 'right' },
+  ];
+  pdf.setFillColor(240, 243, 248);
+  pdf.rect(M, y - 4, W - 2 * M, 7, 'F');
+  cols.forEach(c => pdf.text(c.label, c.x, y, { align: c.align || 'left' }));
+  y += 8;
+
+  pdf.setFont(undefined, 'normal'); pdf.setFontSize(8);
+  (items || []).forEach(it => {
+    if (y > 255) { pdf.addPage(); y = 20; }
+    const vals = [
+      it.description || '', it.sku || '',
+      String(it.quantity ?? ''), it.unit || '',
+      it.unit_price != null ? it.unit_price.toFixed(2) : '',
+      it.amount != null ? it.amount.toFixed(2) : '',
+    ];
+    cols.forEach((c, i) => pdf.text(vals[i], c.x, y, { align: c.align || 'left', maxWidth: c.w }));
+    y += 5.5;
+    pdf.setDrawColor(230); pdf.line(M, y - 3, W - M, y - 3);
+  });
+
+  // Totals (Empty Field Rule)
+  y += 4;
+  const totalRow = (label, val, bold = false) => {
+    if (y > 280) { pdf.addPage(); y = 20; }
+    pdf.setFont(undefined, bold ? 'bold' : 'normal');
+    pdf.text(label, W - M - 60, y);
+    pdf.text(String(val), W - M, y, { align: 'right' });
+    y += 6;
+  };
+  pdf.setDrawColor(0);
+  const cur = po.currency || '';
+  totalRow('Subtotal', `${cur} ${(po.subtotal ?? 0).toFixed(2)}`);
+  if (po.other_charges) totalRow('Other Charges', `${cur} ${po.other_charges.toFixed(2)}`);
+  if (po.discount) totalRow('Discount', `-${cur} ${po.discount.toFixed(2)}`);
+  totalRow('Grand Total', `${cur} ${(po.grand_total ?? 0).toFixed(2)}`, true);
+
+  // Notes
+  if (po.notes) {
+    y += 6;
+    if (y > 270) { pdf.addPage(); y = 20; }
+    pdf.setFontSize(8); pdf.setFont(undefined, 'bold'); pdf.setTextColor(60);
+    pdf.text('NOTES', M, y); y += 5;
+    pdf.setFont(undefined, 'normal'); pdf.setTextColor(0);
+    pdf.text(po.notes, M, y, { maxWidth: W - 2 * M });
+    y += 5;
+  }
+
+  if (data.watermark) {
+    applyWatermarkToAllPages(pdf, W, 297);
+    pdf.save(`PREVIEW-${po.po_number || 'purchase-order'}.pdf`);
+  } else {
+    pdf.save(`${po.po_number}.pdf`);
+  }
+}
+
+// ============================================
 // PACKING LIST PDF
 // ============================================
 

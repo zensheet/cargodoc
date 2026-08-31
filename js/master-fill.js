@@ -33,6 +33,7 @@ if (typeof esc !== 'function') {
 
   attachCompanyFill('f-shipper_name', 'supplier'); // shipper biasanya supplier/kita sendiri
   attachCompanyFill('f-receiver_name', 'customer');
+  attachCompanyFill('f-supplier_name', 'supplier'); // purchase-order.html
   attachProductFill();
 })();
 

@@ -14,7 +14,7 @@ const FEATURE_CATALOG = [
   { key: 'proforma_invoice', gateKey: 'invoice', name: 'Proforma Invoice',
     desc: 'Pre-shipment quotations for buyers to arrange payment/LC — convert to Commercial Invoice once shipment is confirmed.',
     href: '/invoice.html?type=proforma', historyHref: '/invoice-list.html?type=proforma' },
-  { key: 'purchase_order',        name: 'Purchase Order',         desc: 'Issue POs to suppliers. (Coming soon)',                                     href: null },
+  { key: 'purchase_order',        name: 'Purchase Order',         desc: 'Issue POs to suppliers with itemized goods, terms & totals.',                href: '/purchase-order.html', historyHref: '/purchase-order-list.html' },
   { key: 'shipping_rate',         name: 'Shipping Rate Checker',  desc: 'Look up shipping rates. (Coming soon)',                                     href: null },
   { key: 'duty_tax',              name: 'Duty & Tax Calculator',  desc: 'Estimate duties & taxes. (Coming soon)',                                    href: null },
   { key: 'quotation',             name: 'Quotation',              desc: 'Send price quotations to customers. (Coming soon)',                         href: null },
