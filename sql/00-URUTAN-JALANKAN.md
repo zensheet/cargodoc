@@ -90,6 +90,17 @@ sebelumnya (banyak pakai `references` / `ALTER TABLE ... ADD COLUMN`).
     ini TIDAK auto-enable untuk self-signup — admin perlu enable manual
     per customer di `admin.html`, sama seperti akun admin-created.
 
+14. **`18-sales-order.sql`**
+    Lanjutan Purchase Order — kebalikannya: kita JUAL ke Customer, bukan
+    beli dari Supplier. Tabel `sales_orders` + `sales_order_items`, field
+    & pola RLS 1:1 sama dengan `purchase_orders`/`purchase_order_items`
+    (Customer ganti Supplier, Ship To ganti Deliver To). Butuh langkah 13
+    sudah dijalankan. Beda dari `purchase_order` (yang sudah ada baris-nya
+    di seed langkah 2 dengan `active=false`), feature `sales_order` BELUM
+    PERNAH ada baris-nya sama sekali di tabel `features` — jadi file ini
+    `insert`, bukan `update`. Sama seperti `purchase_order`, TIDAK
+    auto-enable untuk self-signup — admin enable manual per customer.
+
 ---
 
 Catatan: tabel `customers` dan `suppliers` yang sempat ada di draft awal
