@@ -1,7 +1,8 @@
 // ============================================
 // DELIVERY NOTE (DN) — form logic, items, save
-// Mengikuti pola persis js/shipping-instruction.js:
-//   - Feature-gated (bukan guest mode)
+// Mengikuti pola persis js/purchase-order.js / js/invoice.js:
+//   - Guest mode: bisa diakses tanpa login (PRD §73/§74, lihat
+//     sql/23-guest-mode-dn-si.sql)
 //   - PRD §74 tetap berlaku: akun 'pending' -> PDF watermark
 //   - Nomor otomatis DN-{YEAR}-{SEQ}, editable
 //   - Edit existing DN via ?id=<uuid> di URL
@@ -9,22 +10,29 @@
 // ============================================
 
 let EDIT_ID = null; // null = create baru; berisi id = mode edit
+let IS_GUEST = false; // true = belum login (PRD §73 guest mode)
 
 (async function initDeliveryNote() {
-  const { allowed, session } = await requireFeature('delivery_note');
-  if (!session) return;
-  if (!allowed) { location.href = '/app.html'; return; }
+  const { allowed, session, guest } = await requireFeatureOrGuest('delivery_note');
+  if (!allowed) { location.href = '/app.html'; return; } // login tapi fitur di-lock
 
-  document.getElementById('user-name').textContent = session.profile.email;
-  // PRD §74: customer sudah login tapi akunnya masih 'pending'
-  if (session.profile.status === 'pending') {
-    document.getElementById('pending-warning').hidden = false;
+  IS_GUEST = guest;
+  if (guest) {
+    renderGuestHeader(); // js/guest-auth.js
+  } else {
+    document.getElementById('user-name').textContent = session.profile.email;
+    // PRD §74: customer sudah login tapi akunnya masih 'pending'
+    if (session.profile.status === 'pending') {
+      document.getElementById('pending-warning').hidden = false;
+    }
   }
 
   EDIT_ID = new URLSearchParams(location.search).get('id');
 
   // SI dropdown harus terisi options-nya DULU sebelum loadDnForEdit coba
   // set value-nya (select butuh <option> yang matching sudah ada dulu).
+  // Guest belum tentu punya akses baca shipping_instructions (RLS -- guest
+  // belum login), jadi cukup dilewati kalau gagal, dropdown tetap kosong.
   await loadSiOptions();
 
   if (EDIT_ID) {
@@ -179,11 +187,18 @@ async function loadDnForEdit(id) {
 }
 
 // ---------- NOMOR DN ----------
+// PENTING: dn_number unique PER USER (lihat sql/21-delivery-note.sql),
+// jadi hitungannya wajib difilter eksplisit by user_id.
 async function nextDnNumber() {
   const year = new Date().getFullYear();
+  const userId = window.APP_SESSION?.user?.id;
+
+  if (!userId) return `DN-${year}-00001`; // guest -- nomor sementara utk preview
+
   const { count, error } = await supabase
     .from('delivery_notes')
     .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
     .like('dn_number', `DN-${year}-%`);
   if (error) console.warn(error);
   return `DN-${year}-${String((count || 0) + 1).padStart(5, '0')}`;
@@ -345,6 +360,14 @@ async function saveOnly() {
   const data = collectDeliveryNote();
   softValidation(data);
 
+  if (IS_GUEST) {
+    guestAuthGate(async () => {
+      await persistDeliveryNote(data, 'draft');
+      showActivationModal({ justSaved: true, onClose: () => location.href = '/delivery-note-list.html' });
+    });
+    return;
+  }
+
   const btn = document.getElementById('btn-save-only');
   btn.disabled = true; btn.textContent = EDIT_ID ? 'Updating...' : 'Saving...';
   try {
@@ -360,6 +383,28 @@ async function saveOnly() {
 async function saveAndDownload() {
   const data = collectDeliveryNote();
   softValidation(data);
+
+  if (IS_GUEST) {
+    // 1) Preview watermark client-side -- TIDAK disimpan ke DB (PRD §73)
+    const previewDn = { ...data.delivery_note, dn_number: data.delivery_note.dn_number || 'PREVIEW' };
+    generateDeliveryNotePDF({ ...data, delivery_note: previewDn, branding: null, watermark: true });
+
+    // 2) Modal signup/login ringan. Draft baru benar-benar disimpan ke
+    //    DB SETELAH auth sukses.
+    guestAuthGate(async () => {
+      const saved = await persistDeliveryNote(data, 'final');
+      const branding = await getBranding();
+      const watermark = accountNeedsWatermark(window.APP_SESSION); // PRD §74
+      await generateDeliveryNotePDF({ ...data, delivery_note: saved, branding, watermark });
+      if (watermark) {
+        showActivationModal({ justSaved: true, onClose: () => location.href = '/delivery-note-list.html' });
+      } else {
+        alert('✅ Account created & delivery note saved. PDF downloaded.');
+        location.href = '/delivery-note-list.html';
+      }
+    });
+    return;
+  }
 
   const btn = document.getElementById('btn-save');
   btn.disabled = true; btn.textContent = EDIT_ID ? 'Updating...' : 'Saving...';

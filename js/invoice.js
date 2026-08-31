@@ -538,8 +538,7 @@ async function saveOnly() {
   if (IS_GUEST) {
     guestAuthGate(async () => {
       await persistInvoice(data, 'draft');
-      alert('✅ Account created & invoice saved as draft.');
-      location.href = '/invoice-list.html';
+      showActivationModal({ justSaved: true, onClose: () => location.href = '/invoice-list.html' });
     });
     return;
   }
@@ -603,10 +602,14 @@ async function saveAndDownload() {
       // tetap watermark sampai admin klik "Activate".
       const watermark = accountNeedsWatermark(window.APP_SESSION);
       await generateInvoicePDF({ ...data, invoice: saved, branding, watermark });
-      alert(watermark
-        ? '✅ Account created & invoice saved.\n\nYour PDF still has a watermark — it will be removed once the administrator activates your account.'
-        : '✅ Account created & invoice saved. PDF downloaded.');
-      location.href = '/invoice-list.html';
+      if (watermark) {
+        // Redirect BARU jalan setelah modal ditutup (bukan langsung),
+        // supaya modal-nya sempat kebaca -- js/guard.js
+        showActivationModal({ justSaved: true, onClose: () => location.href = '/invoice-list.html' });
+      } else {
+        alert('✅ Account created & invoice saved. PDF downloaded.');
+        location.href = '/invoice-list.html';
+      }
     });
     return;
   }

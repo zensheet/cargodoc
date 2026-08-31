@@ -117,3 +117,64 @@ function accountNeedsWatermark(session) {
   if (session.profile.role === 'developer') return false;
   return session.profile.status !== 'active';
 }
+
+/**
+ * PRD §74 — Popup "Aktivasi Akun Diperlukan".
+ * Dipanggil di 2 titik: (1) begitu guest baru saja signup & dokumennya
+ * tersimpan (lihat *.js saveAndDownload/saveOnly, param opts.justSaved),
+ * dan (2) lewat tombol "Hubungi Admin" di banner pending yang sudah ada
+ * di app.html/invoice.html/dll.
+ *
+ * Link WA/email dibuat clickable + pesan WA di-prefill otomatis dengan
+ * email akun (kalau session tersedia) supaya admin langsung tau akun
+ * siapa yang chat, tanpa user perlu ngetik ulang.
+ */
+function showActivationModal(opts = {}) {
+  const email = opts.email || window.APP_SESSION?.profile?.email || '';
+  const waMsg = encodeURIComponent(
+    `Halo Admin, saya ingin aktivasi akun ISG saya.${email ? `\nEmail: ${email}` : ''}`);
+  const waHref = `https://wa.me/${SUPPORT_WHATSAPP_INTL}?text=${waMsg}`;
+  const mailHref = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Aktivasi Akun ISG')}` +
+    `&body=${encodeURIComponent(`Halo Admin, saya ingin aktivasi akun ISG saya.${email ? `\nEmail: ${email}` : ''}`)}`;
+
+  const close = () => {
+    document.getElementById('activation-modal-overlay').hidden = true;
+    if (typeof opts.onClose === 'function') opts.onClose(); // mis. baru redirect SETELAH modal ditutup
+  };
+
+  let overlay = document.getElementById('activation-modal-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'activation-modal-overlay';
+    overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:300;';
+    document.body.appendChild(overlay);
+  }
+  overlay.onclick = e => { if (e.target === overlay) close(); };
+
+  overlay.innerHTML = `
+    <div class="feature-card" style="max-width:400px; width:92%; margin:12vh auto 0;">
+      <h3>🔒 Aktivasi Akun Diperlukan</h3>
+      <p style="color:var(--text-muted); font-size:14px; margin:10px 0;">
+        ${opts.justSaved
+          ? 'Dokumen Anda sudah tersimpan, tapi akun Anda belum aktif — PDF masih ada watermark.'
+          : 'Akun Anda belum aktif — PDF yang Anda download masih ada watermark.'}
+        Silakan hubungi Admin untuk verifikasi pembayaran & aktivasi akun:
+      </p>
+      <a href="${waHref}" target="_blank" rel="noopener"
+         class="btn btn-primary btn-block" style="margin-bottom:8px; text-align:center; text-decoration:none;">
+        💬 WhatsApp: ${SUPPORT_WHATSAPP_DISPLAY}
+      </a>
+      <a href="${mailHref}"
+         class="btn btn-secondary btn-block" style="text-align:center; text-decoration:none;">
+        ✉️ ${SUPPORT_EMAIL}
+      </a>
+      <p style="color:var(--text-muted); font-size:12px; margin:12px 0 0;">
+        Akun akan diaktifkan otomatis setelah pembayaran dikonfirmasi.
+      </p>
+      <button class="btn btn-secondary btn-sm" style="width:100%; margin-top:14px;" id="activation-modal-ok">
+        Mengerti
+      </button>
+    </div>`;
+  document.getElementById('activation-modal-ok').onclick = close;
+  overlay.hidden = false;
+}

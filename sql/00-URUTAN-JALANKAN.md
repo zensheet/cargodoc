@@ -150,6 +150,18 @@ sebelumnya (banyak pakai `references` / `ALTER TABLE ... ADD COLUMN`).
     ikut ter-cover policy row-level yang sudah ada di masing-masing tabel.
     Butuh langkah 17 sudah dijalankan.
 
+19. **`23-guest-mode-dn-si.sql`**
+    Keputusan produk berubah lagi (sama alasannya dengan langkah 15 untuk
+    PO/SO): Delivery Note & Shipping Instruction ikut dibuka untuk guest
+    mode juga — SEMUA 6 jenis dokumen sekarang bisa dicoba tanpa login
+    (watermark tetap jadi pembatasnya) supaya calon customer lihat full
+    scope produk sebelum daftar. Butuh langkah 16 & 17 sudah dijalankan.
+    RLS TIDAK berubah (`is_account_usable()` di `own insert` policy
+    `shipping_instructions`/`delivery_notes` sudah benar dari awal, cuma
+    trigger `handle_new_user()`-nya yang perlu diganti lagi supaya
+    feature `delivery_note`/`shipping_instruction` ikut auto-enable untuk
+    self-signup, plus backfill untuk akun self-signup yang sudah ada).
+
 ---
 
 Catatan: tabel `customers` dan `suppliers` yang sempat ada di draft awal

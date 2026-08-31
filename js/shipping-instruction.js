@@ -1,29 +1,37 @@
 // ============================================
 // SHIPPING INSTRUCTION (SI) — form logic, cargo lines, save
-// Mengikuti pola persis js/purchase-order.js:
-//   - Feature-gated (bukan guest mode -- lihat catatan di sql/20)
+// Mengikuti pola persis js/purchase-order.js / js/invoice.js:
+//   - Guest mode: bisa diakses tanpa login (PRD §73/§74, lihat
+//     sql/23-guest-mode-dn-si.sql)
 //   - PRD §74 tetap berlaku: akun 'pending' -> PDF watermark
 //   - Nomor otomatis SI-{YEAR}-{SEQ}, editable
 //   - Edit existing SI via ?id=<uuid> di URL
 // ============================================
 
 let EDIT_ID = null; // null = create baru; berisi id = mode edit
+let IS_GUEST = false; // true = belum login (PRD §73 guest mode)
 
 (async function initShippingInstruction() {
-  const { allowed, session } = await requireFeature('shipping_instruction');
-  if (!session) return;
-  if (!allowed) { location.href = '/app.html'; return; }
+  const { allowed, session, guest } = await requireFeatureOrGuest('shipping_instruction');
+  if (!allowed) { location.href = '/app.html'; return; } // login tapi fitur di-lock
 
-  document.getElementById('user-name').textContent = session.profile.email;
-  // PRD §74: customer sudah login tapi akunnya masih 'pending'
-  if (session.profile.status === 'pending') {
-    document.getElementById('pending-warning').hidden = false;
+  IS_GUEST = guest;
+  if (guest) {
+    renderGuestHeader(); // js/guest-auth.js
+  } else {
+    document.getElementById('user-name').textContent = session.profile.email;
+    // PRD §74: customer sudah login tapi akunnya masih 'pending'
+    if (session.profile.status === 'pending') {
+      document.getElementById('pending-warning').hidden = false;
+    }
   }
 
   EDIT_ID = new URLSearchParams(location.search).get('id');
 
   // PL dropdown harus terisi options-nya DULU sebelum loadSiForEdit coba
   // set value-nya (select butuh <option> yang matching sudah ada dulu).
+  // Guest belum login -> RLS packing_lists cuma balikin 0 baris (bukan
+  // error), dropdown-nya tetap kosong, aman.
   await loadPlOptions();
 
   if (EDIT_ID) {
@@ -199,11 +207,18 @@ async function loadSiForEdit(id) {
 }
 
 // ---------- NOMOR SI ----------
+// PENTING: si_number unique PER USER (lihat sql/20-shipping-instruction.sql),
+// jadi hitungannya wajib difilter eksplisit by user_id.
 async function nextSiNumber() {
   const year = new Date().getFullYear();
+  const userId = window.APP_SESSION?.user?.id;
+
+  if (!userId) return `SI-${year}-00001`; // guest -- nomor sementara utk preview
+
   const { count, error } = await supabase
     .from('shipping_instructions')
     .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
     .like('si_number', `SI-${year}-%`);
   if (error) console.warn(error);
   return `SI-${year}-${String((count || 0) + 1).padStart(5, '0')}`;
@@ -402,6 +417,14 @@ async function saveOnly() {
   const data = collectShippingInstruction();
   softValidation(data);
 
+  if (IS_GUEST) {
+    guestAuthGate(async () => {
+      await persistShippingInstruction(data, 'draft');
+      showActivationModal({ justSaved: true, onClose: () => location.href = '/shipping-instruction-list.html' });
+    });
+    return;
+  }
+
   const btn = document.getElementById('btn-save-only');
   btn.disabled = true; btn.textContent = EDIT_ID ? 'Updating...' : 'Saving...';
   try {
@@ -417,6 +440,28 @@ async function saveOnly() {
 async function saveAndDownload() {
   const data = collectShippingInstruction();
   softValidation(data);
+
+  if (IS_GUEST) {
+    // 1) Preview watermark client-side -- TIDAK disimpan ke DB (PRD §73)
+    const previewSi = { ...data.shipping_instruction, si_number: data.shipping_instruction.si_number || 'PREVIEW' };
+    generateShippingInstructionPDF({ ...data, shipping_instruction: previewSi, branding: null, watermark: true });
+
+    // 2) Modal signup/login ringan. Draft baru benar-benar disimpan ke
+    //    DB SETELAH auth sukses.
+    guestAuthGate(async () => {
+      const saved = await persistShippingInstruction(data, 'final');
+      const branding = await getBranding();
+      const watermark = accountNeedsWatermark(window.APP_SESSION); // PRD §74
+      await generateShippingInstructionPDF({ ...data, shipping_instruction: saved, branding, watermark });
+      if (watermark) {
+        showActivationModal({ justSaved: true, onClose: () => location.href = '/shipping-instruction-list.html' });
+      } else {
+        alert('✅ Account created & shipping instruction saved. PDF downloaded.');
+        location.href = '/shipping-instruction-list.html';
+      }
+    });
+    return;
+  }
 
   const btn = document.getElementById('btn-save');
   btn.disabled = true; btn.textContent = EDIT_ID ? 'Updating...' : 'Saving...';

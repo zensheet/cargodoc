@@ -300,8 +300,7 @@ async function saveOnly() {
   if (IS_GUEST) {
     guestAuthGate(async () => {
       await persistPurchaseOrder(data, 'draft');
-      alert('✅ Account created & purchase order saved as draft.');
-      location.href = '/purchase-order-list.html';
+      showActivationModal({ justSaved: true, onClose: () => location.href = '/purchase-order-list.html' });
     });
     return;
   }
@@ -337,10 +336,12 @@ async function saveAndDownload() {
       // tetap watermark sampai admin klik "Activate".
       const watermark = accountNeedsWatermark(window.APP_SESSION);
       await generatePurchaseOrderPDF({ ...data, purchase_order: saved, branding, watermark });
-      alert(watermark
-        ? '✅ Account created & purchase order saved.\n\nYour PDF still has a watermark — it will be removed once the administrator activates your account.'
-        : '✅ Account created & purchase order saved. PDF downloaded.');
-      location.href = '/purchase-order-list.html';
+      if (watermark) {
+        showActivationModal({ justSaved: true, onClose: () => location.href = '/purchase-order-list.html' });
+      } else {
+        alert('✅ Account created & purchase order saved. PDF downloaded.');
+        location.href = '/purchase-order-list.html';
+      }
     });
     return;
   }
