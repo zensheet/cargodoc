@@ -74,7 +74,7 @@ async function loadFromPo() {
 
   const { data: po, error } = await supabase
     .from('purchase_orders').select('*').eq('id', poId).single();
-  if (error || !po) return alert('Failed to load purchase order: ' + (error?.message || 'not found'));
+  if (error || !po) return alert('Gagal memuat purchase order: ' + (error?.message || 'not found'));
 
   const { data: items } = await supabase
     .from('purchase_order_items').select('*').eq('purchase_order_id', poId).order('created_at');
@@ -105,7 +105,7 @@ async function loadSoForEdit(id) {
   const { data: so, error } = await supabase
     .from('sales_orders').select('*').eq('id', id).single();
   if (error || !so) {
-    alert('Sales order not found or you do not have access to it.');
+    alert('Sales order tidak ditemukan atau Anda tidak memiliki akses.');
     location.href = '/sales-order-list.html';
     return;
   }
@@ -296,8 +296,8 @@ function softValidation(data) {
   if (!data.items.length) missing.push('Items');
   if (missing.length) {
     const box = document.getElementById('soft-warning');
-    box.textContent = `⚠ Recommended information is missing: ${missing.join(', ')}. ` +
-      'You can still generate this document, but it may look incomplete.';
+    box.textContent = `⚠ Ada informasi yang disarankan belum diisi: ${missing.join(', ')}. ` +
+      'Dokumen tetap bisa dibuat, tapi mungkin terlihat kurang lengkap.';
     box.hidden = false;
     window.scrollTo({ top: 0, behavior: 'smooth' });
     return false;

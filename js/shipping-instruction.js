@@ -75,7 +75,7 @@ async function loadFromPl() {
 
   const { data: pl, error } = await supabase
     .from('packing_lists').select('*').eq('id', plId).single();
-  if (error || !pl) return alert('Failed to load packing list: ' + (error?.message || 'not found'));
+  if (error || !pl) return alert('Gagal memuat packing list: ' + (error?.message || 'not found'));
 
   const { data: packages } = await supabase
     .from('packing_list_items').select('*').eq('packing_list_id', plId).order('created_at');
@@ -123,7 +123,7 @@ async function loadSiForEdit(id) {
   const { data: si, error } = await supabase
     .from('shipping_instructions').select('*').eq('id', id).single();
   if (error || !si) {
-    alert('Shipping instruction not found or you do not have access to it.');
+    alert('Shipping instruction tidak ditemukan atau Anda tidak memiliki akses.');
     location.href = '/shipping-instruction-list.html';
     return;
   }
@@ -345,8 +345,8 @@ function softValidation(data) {
   if (!data.items.length) missing.push('Cargo details');
   if (missing.length) {
     const box = document.getElementById('soft-warning');
-    box.textContent = `⚠ Recommended information is missing: ${missing.join(', ')}. ` +
-      'You can still generate this document, but it may look incomplete.';
+    box.textContent = `⚠ Ada informasi yang disarankan belum diisi: ${missing.join(', ')}. ` +
+      'Dokumen tetap bisa dibuat, tapi mungkin terlihat kurang lengkap.';
     box.hidden = false;
     window.scrollTo({ top: 0, behavior: 'smooth' });
     return false;

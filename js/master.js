@@ -35,7 +35,7 @@ function esc(s) {
 async function loadCompanies() {
   const { data, error } = await supabase
     .from('companies').select('*').order('company_name');
-  if (error) return alert('Load companies failed: ' + error.message);
+  if (error) return alert('Gagal memuat data perusahaan: ' + error.message);
   COMPANIES = data || [];
   renderCompanies();
 }
@@ -44,7 +44,7 @@ function renderCompanies() {
   const el = document.getElementById('companies-table');
   if (!COMPANIES.length) {
     el.innerHTML = `<div class="feature-card" style="text-align:center; padding:30px;">
-      <p style="color:var(--text-muted);">No companies yet. Add your first customer or supplier above.</p></div>`;
+      <p style="color:var(--text-muted);">Belum ada perusahaan. Tambahkan customer atau supplier pertama Anda di atas.</p></div>`;
     return;
   }
   el.innerHTML = `
@@ -130,7 +130,7 @@ function resetCompanyForm() {
 async function deleteCompany(id, name) {
   if (!(await customConfirm(`Delete company "${name}" from master data?\n\nExisting invoices are NOT affected.`))) return;
   const { error } = await supabase.from('companies').delete().eq('id', id);
-  if (error) return alert('Delete failed: ' + error.message);
+  if (error) return alert('Gagal menghapus: ' + error.message);
   await loadCompanies();
 }
 
@@ -138,7 +138,7 @@ async function deleteCompany(id, name) {
 async function loadProducts() {
   const { data, error } = await supabase
     .from('products').select('*').order('product_name');
-  if (error) return alert('Load products failed: ' + error.message);
+  if (error) return alert('Gagal memuat data produk: ' + error.message);
   PRODUCTS = data || [];
   renderProducts();
 }
@@ -147,7 +147,7 @@ function renderProducts() {
   const el = document.getElementById('products-table');
   if (!PRODUCTS.length) {
     el.innerHTML = `<div class="feature-card" style="text-align:center; padding:30px;">
-      <p style="color:var(--text-muted);">No products yet. Add your frequently shipped products above.</p></div>`;
+      <p style="color:var(--text-muted);">Belum ada produk. Tambahkan produk yang sering Anda kirim di atas.</p></div>`;
     return;
   }
   el.innerHTML = `
@@ -223,7 +223,7 @@ function resetProductForm() {
 async function deleteProduct(id, name) {
   if (!(await customConfirm(`Delete product "${name}" from master data?\n\nExisting invoices are NOT affected.`))) return;
   const { error } = await supabase.from('products').delete().eq('id', id);
-  if (error) return alert('Delete failed: ' + error.message);
+  if (error) return alert('Gagal menghapus: ' + error.message);
   await loadProducts();
 }
 
@@ -231,7 +231,7 @@ async function deleteProduct(id, name) {
 async function loadFieldDefs() {
   const { data, error } = await supabase
     .from('custom_field_definitions').select('*').order('sort_order');
-  if (error) return alert('Load custom fields failed: ' + error.message);
+  if (error) return alert('Gagal memuat custom fields: ' + error.message);
   FIELD_DEFS = data || [];
   renderFieldDefs();
 }
@@ -240,7 +240,7 @@ function renderFieldDefs() {
   const el = document.getElementById('cfd-table');
   if (!FIELD_DEFS.length) {
     el.innerHTML = `<div class="feature-card" style="text-align:center; padding:30px;">
-      <p style="color:var(--text-muted);">No custom fields yet. Add one above — it will appear on the Invoice and/or Packing List form.</p></div>`;
+      <p style="color:var(--text-muted);">Belum ada custom field. Tambahkan di atas — akan muncul di form Invoice dan/atau Packing List.</p></div>`;
     return;
   }
   const APPLIES_LABEL = { both: 'Invoice & Packing List', invoice: 'Invoice only', packing_list: 'Packing List only' };
@@ -299,6 +299,6 @@ async function saveFieldDef() {
 async function deleteFieldDef(id, label) {
   if (!(await customConfirm(`Delete custom field "${label}"?\n\nIt will no longer appear on forms. Values already saved on existing documents are NOT affected.`))) return;
   const { error } = await supabase.from('custom_field_definitions').delete().eq('id', id);
-  if (error) return alert('Delete failed: ' + error.message);
+  if (error) return alert('Gagal menghapus: ' + error.message);
   await loadFieldDefs();
 }

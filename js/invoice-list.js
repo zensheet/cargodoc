@@ -63,9 +63,9 @@ function renderList() {
     container.innerHTML = `
       <div class="feature-card" style="text-align:center; padding:40px;">
         <p style="color:var(--text-muted);">
-          ${ALL_INVOICES.length ? 'No invoices match your filter.' : 'No invoices yet.'}
+          ${ALL_INVOICES.length ? 'Tidak ada invoice yang cocok dengan filter.' : 'Belum ada invoice.'}
         </p>
-        <a class="btn btn-primary" style="margin-top:12px;" href="/invoice.html">+ Create First Invoice</a>
+        <a class="btn btn-primary" style="margin-top:12px;" href="/invoice.html">+ Buat Invoice Pertama</a>
       </div>`;
     return;
   }
@@ -167,7 +167,7 @@ async function downloadInvoice(id) {
     .from('invoices').select('*').eq('id', id).single();
   const { data: items } = await supabase
     .from('invoice_items').select('*').eq('invoice_id', id).order('created_at');
-  if (!inv) return alert('Invoice not found.');
+  if (!inv) return alert('Invoice tidak ditemukan.');
 
   const branding = await getBranding(); // js/branding.js
   const watermark = accountNeedsWatermark(window.APP_SESSION); // PRD §74
@@ -199,7 +199,7 @@ async function duplicateInvoice(id) {
 
   const { data: inv, error } = await supabase
     .from('invoices').select('*').eq('id', id).single();
-  if (error) return alert('Load failed: ' + error.message);
+  if (error) return alert('Gagal memuat: ' + error.message);
 
   const { data: items } = await supabase
     .from('invoice_items').select('*').eq('invoice_id', id);
@@ -214,14 +214,14 @@ async function duplicateInvoice(id) {
 
   const { data: saved, error: insErr } = await supabase
     .from('invoices').insert(copy).select().single();
-  if (insErr) return alert('Duplicate failed: ' + insErr.message);
+  if (insErr) return alert('Gagal menduplikasi: ' + insErr.message);
 
   if (items?.length) {
     const { error: itemErr } = await supabase.from('invoice_items').insert(
       items.map(({ id:_, invoice_id, created_at, ...it }) =>
         ({ ...it, invoice_id: saved.id }))
     );
-    if (itemErr) return alert('Items copy failed: ' + itemErr.message);
+    if (itemErr) return alert('Gagal menyalin item: ' + itemErr.message);
   }
 
   alert(`✅ Duplicated as ${newNumber}`);
@@ -237,7 +237,7 @@ async function deleteInvoice(id, number) {
   const { error } = await supabase
     .from('invoices').delete().eq('id', id);
 
-  if (error) return alert('Delete failed: ' + error.message);
+  if (error) return alert('Gagal menghapus: ' + error.message);
   await loadInvoices();
 }
 

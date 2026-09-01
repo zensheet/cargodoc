@@ -50,9 +50,9 @@ function renderList() {
     container.innerHTML = `
       <div class="feature-card" style="text-align:center; padding:40px;">
         <p style="color:var(--text-muted);">
-          ${ALL_SIS.length ? 'No shipping instructions match your filter.' : 'No shipping instructions yet.'}
+          ${ALL_SIS.length ? 'Tidak ada shipping instruction yang cocok dengan filter.' : 'Belum ada shipping instruction.'}
         </p>
-        <a class="btn btn-primary" style="margin-top:12px;" href="/shipping-instruction.html">+ Create First Shipping Instruction</a>
+        <a class="btn btn-primary" style="margin-top:12px;" href="/shipping-instruction.html">+ Buat Shipping Instruction Pertama</a>
       </div>`;
     return;
   }
@@ -144,7 +144,7 @@ async function downloadSi(id) {
     .from('shipping_instructions').select('*').eq('id', id).single();
   const { data: items } = await supabase
     .from('shipping_instruction_items').select('*').eq('shipping_instruction_id', id).order('created_at');
-  if (!si) return alert('Shipping instruction not found.');
+  if (!si) return alert('Shipping instruction tidak ditemukan.');
 
   const branding = await getBranding(); // js/branding.js
   const watermark = accountNeedsWatermark(window.APP_SESSION); // PRD §74
@@ -180,7 +180,7 @@ async function duplicateSi(id) {
 
   const { data: si, error } = await supabase
     .from('shipping_instructions').select('*').eq('id', id).single();
-  if (error) return alert('Load failed: ' + error.message);
+  if (error) return alert('Gagal memuat: ' + error.message);
 
   const { data: items } = await supabase
     .from('shipping_instruction_items').select('*').eq('shipping_instruction_id', id);
@@ -194,14 +194,14 @@ async function duplicateSi(id) {
 
   const { data: saved, error: insErr } = await supabase
     .from('shipping_instructions').insert(copy).select().single();
-  if (insErr) return alert('Duplicate failed: ' + insErr.message);
+  if (insErr) return alert('Gagal menduplikasi: ' + insErr.message);
 
   if (items?.length) {
     const { error: itemErr } = await supabase.from('shipping_instruction_items').insert(
       items.map(({ id:_, shipping_instruction_id, created_at, ...it }) =>
         ({ ...it, shipping_instruction_id: saved.id }))
     );
-    if (itemErr) return alert('Cargo lines copy failed: ' + itemErr.message);
+    if (itemErr) return alert('Gagal menyalin cargo lines: ' + itemErr.message);
   }
 
   alert(`✅ Duplicated as ${newNumber}`);
@@ -215,7 +215,7 @@ async function deleteSi(id, number) {
   const { error } = await supabase
     .from('shipping_instructions').delete().eq('id', id);
 
-  if (error) return alert('Delete failed: ' + error.message);
+  if (error) return alert('Gagal menghapus: ' + error.message);
   await loadSis();
 }
 

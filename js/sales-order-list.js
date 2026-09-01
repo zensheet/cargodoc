@@ -50,9 +50,9 @@ function renderList() {
     container.innerHTML = `
       <div class="feature-card" style="text-align:center; padding:40px;">
         <p style="color:var(--text-muted);">
-          ${ALL_SOS.length ? 'No sales orders match your filter.' : 'No sales orders yet.'}
+          ${ALL_SOS.length ? 'Tidak ada sales order yang cocok dengan filter.' : 'Belum ada sales order.'}
         </p>
-        <a class="btn btn-primary" style="margin-top:12px;" href="/sales-order.html">+ Create First Sales Order</a>
+        <a class="btn btn-primary" style="margin-top:12px;" href="/sales-order.html">+ Buat Sales Order Pertama</a>
       </div>`;
     return;
   }
@@ -149,7 +149,7 @@ async function downloadSo(id) {
     .from('sales_orders').select('*').eq('id', id).single();
   const { data: items } = await supabase
     .from('sales_order_items').select('*').eq('sales_order_id', id).order('created_at');
-  if (!so) return alert('Sales order not found.');
+  if (!so) return alert('Sales order tidak ditemukan.');
 
   const branding = await getBranding(); // js/branding.js
   const watermark = accountNeedsWatermark(window.APP_SESSION); // PRD §74
@@ -180,7 +180,7 @@ async function duplicateSo(id) {
 
   const { data: so, error } = await supabase
     .from('sales_orders').select('*').eq('id', id).single();
-  if (error) return alert('Load failed: ' + error.message);
+  if (error) return alert('Gagal memuat: ' + error.message);
 
   const { data: items } = await supabase
     .from('sales_order_items').select('*').eq('sales_order_id', id);
@@ -194,14 +194,14 @@ async function duplicateSo(id) {
 
   const { data: saved, error: insErr } = await supabase
     .from('sales_orders').insert(copy).select().single();
-  if (insErr) return alert('Duplicate failed: ' + insErr.message);
+  if (insErr) return alert('Gagal menduplikasi: ' + insErr.message);
 
   if (items?.length) {
     const { error: itemErr } = await supabase.from('sales_order_items').insert(
       items.map(({ id:_, sales_order_id, created_at, ...it }) =>
         ({ ...it, sales_order_id: saved.id }))
     );
-    if (itemErr) return alert('Items copy failed: ' + itemErr.message);
+    if (itemErr) return alert('Gagal menyalin item: ' + itemErr.message);
   }
 
   alert(`✅ Duplicated as ${newNumber}`);
@@ -215,7 +215,7 @@ async function deleteSo(id, number) {
   const { error } = await supabase
     .from('sales_orders').delete().eq('id', id);
 
-  if (error) return alert('Delete failed: ' + error.message);
+  if (error) return alert('Gagal menghapus: ' + error.message);
   await loadSos();
 }
 

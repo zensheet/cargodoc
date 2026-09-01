@@ -50,9 +50,9 @@ function renderList() {
     container.innerHTML = `
       <div class="feature-card" style="text-align:center; padding:40px;">
         <p style="color:var(--text-muted);">
-          ${ALL_DNS.length ? 'No delivery notes match your filter.' : 'No delivery notes yet.'}
+          ${ALL_DNS.length ? 'Tidak ada delivery note yang cocok dengan filter.' : 'Belum ada delivery note.'}
         </p>
-        <a class="btn btn-primary" style="margin-top:12px;" href="/delivery-note.html">+ Create First Delivery Note</a>
+        <a class="btn btn-primary" style="margin-top:12px;" href="/delivery-note.html">+ Buat Delivery Note Pertama</a>
       </div>`;
     return;
   }
@@ -144,7 +144,7 @@ async function downloadDn(id) {
     .from('delivery_notes').select('*').eq('id', id).single();
   const { data: items } = await supabase
     .from('delivery_note_items').select('*').eq('delivery_note_id', id).order('created_at');
-  if (!dn) return alert('Delivery note not found.');
+  if (!dn) return alert('Delivery note tidak ditemukan.');
 
   const branding = await getBranding(); // js/branding.js
   const watermark = accountNeedsWatermark(window.APP_SESSION); // PRD §74
@@ -175,7 +175,7 @@ async function duplicateDn(id) {
 
   const { data: dn, error } = await supabase
     .from('delivery_notes').select('*').eq('id', id).single();
-  if (error) return alert('Load failed: ' + error.message);
+  if (error) return alert('Gagal memuat: ' + error.message);
 
   const { data: items } = await supabase
     .from('delivery_note_items').select('*').eq('delivery_note_id', id);
@@ -190,14 +190,14 @@ async function duplicateDn(id) {
 
   const { data: saved, error: insErr } = await supabase
     .from('delivery_notes').insert(copy).select().single();
-  if (insErr) return alert('Duplicate failed: ' + insErr.message);
+  if (insErr) return alert('Gagal menduplikasi: ' + insErr.message);
 
   if (items?.length) {
     const { error: itemErr } = await supabase.from('delivery_note_items').insert(
       items.map(({ id:_, delivery_note_id, created_at, ...it }) =>
         ({ ...it, delivery_note_id: saved.id }))
     );
-    if (itemErr) return alert('Items copy failed: ' + itemErr.message);
+    if (itemErr) return alert('Gagal menyalin item: ' + itemErr.message);
   }
 
   alert(`✅ Duplicated as ${newNumber}`);
@@ -211,7 +211,7 @@ async function deleteDn(id, number) {
   const { error } = await supabase
     .from('delivery_notes').delete().eq('id', id);
 
-  if (error) return alert('Delete failed: ' + error.message);
+  if (error) return alert('Gagal menghapus: ' + error.message);
   await loadDns();
 }
 

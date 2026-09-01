@@ -50,9 +50,9 @@ function renderList() {
     container.innerHTML = `
       <div class="feature-card" style="text-align:center; padding:40px;">
         <p style="color:var(--text-muted);">
-          ${ALL_POS.length ? 'No purchase orders match your filter.' : 'No purchase orders yet.'}
+          ${ALL_POS.length ? 'Tidak ada purchase order yang cocok dengan filter.' : 'Belum ada purchase order.'}
         </p>
-        <a class="btn btn-primary" style="margin-top:12px;" href="/purchase-order.html">+ Create First Purchase Order</a>
+        <a class="btn btn-primary" style="margin-top:12px;" href="/purchase-order.html">+ Buat Purchase Order Pertama</a>
       </div>`;
     return;
   }
@@ -149,7 +149,7 @@ async function downloadPo(id) {
     .from('purchase_orders').select('*').eq('id', id).single();
   const { data: items } = await supabase
     .from('purchase_order_items').select('*').eq('purchase_order_id', id).order('created_at');
-  if (!po) return alert('Purchase order not found.');
+  if (!po) return alert('Purchase order tidak ditemukan.');
 
   const branding = await getBranding(); // js/branding.js
   const watermark = accountNeedsWatermark(window.APP_SESSION); // PRD §74
@@ -180,7 +180,7 @@ async function duplicatePo(id) {
 
   const { data: po, error } = await supabase
     .from('purchase_orders').select('*').eq('id', id).single();
-  if (error) return alert('Load failed: ' + error.message);
+  if (error) return alert('Gagal memuat: ' + error.message);
 
   const { data: items } = await supabase
     .from('purchase_order_items').select('*').eq('purchase_order_id', id);
@@ -194,14 +194,14 @@ async function duplicatePo(id) {
 
   const { data: saved, error: insErr } = await supabase
     .from('purchase_orders').insert(copy).select().single();
-  if (insErr) return alert('Duplicate failed: ' + insErr.message);
+  if (insErr) return alert('Gagal menduplikasi: ' + insErr.message);
 
   if (items?.length) {
     const { error: itemErr } = await supabase.from('purchase_order_items').insert(
       items.map(({ id:_, purchase_order_id, created_at, ...it }) =>
         ({ ...it, purchase_order_id: saved.id }))
     );
-    if (itemErr) return alert('Items copy failed: ' + itemErr.message);
+    if (itemErr) return alert('Gagal menyalin item: ' + itemErr.message);
   }
 
   alert(`✅ Duplicated as ${newNumber}`);
@@ -215,7 +215,7 @@ async function deletePo(id, number) {
   const { error } = await supabase
     .from('purchase_orders').delete().eq('id', id);
 
-  if (error) return alert('Delete failed: ' + error.message);
+  if (error) return alert('Gagal menghapus: ' + error.message);
   await loadPos();
 }
 

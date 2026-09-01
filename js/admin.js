@@ -120,7 +120,7 @@ async function toggleFeature(userId, featureId, enabled) {
     { user_id: userId, feature_id: featureId, enabled },
     { onConflict: 'user_id,feature_id' }
   );
-  if (error) { alert('Failed: ' + error.message); await loadUsers(); }
+  if (error) { alert('Gagal: ' + error.message); await loadUsers(); }
 }
 
 // ---------- STATUS: ACTIVATE / LOCK / UNLOCK ----------
@@ -132,6 +132,6 @@ async function setStatus(userId, newStatus) {
       && !(await customConfirm('Lock this account? User will be denied access on next login/page load.'))) return;
   const { error } = await supabase
     .from('profiles').update({ status: newStatus }).eq('id', userId);
-  if (error) { alert('Failed: ' + error.message); return; }
+  if (error) { alert('Gagal: ' + error.message); return; }
   await loadUsers();
 }

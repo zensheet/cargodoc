@@ -43,7 +43,7 @@ async function loadPoForEdit(id) {
   const { data: po, error } = await supabase
     .from('purchase_orders').select('*').eq('id', id).single();
   if (error || !po) {
-    alert('Purchase order not found or you do not have access to it.');
+    alert('Purchase order tidak ditemukan atau Anda tidak memiliki akses.');
     location.href = '/purchase-order-list.html';
     return;
   }
@@ -233,8 +233,8 @@ function softValidation(data) {
   if (!data.items.length) missing.push('Items');
   if (missing.length) {
     const box = document.getElementById('soft-warning');
-    box.textContent = `⚠ Recommended information is missing: ${missing.join(', ')}. ` +
-      'You can still generate this document, but it may look incomplete.';
+    box.textContent = `⚠ Ada informasi yang disarankan belum diisi: ${missing.join(', ')}. ` +
+      'Dokumen tetap bisa dibuat, tapi mungkin terlihat kurang lengkap.';
     box.hidden = false;
     window.scrollTo({ top: 0, behavior: 'smooth' });
     return false;

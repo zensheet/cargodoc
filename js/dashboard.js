@@ -5,24 +5,24 @@
 // ============================================
 
 const FEATURE_CATALOG = [
-  { key: 'invoice',               name: 'Commercial Invoice',     desc: 'Create professional export/import invoices with items, charges & totals.', href: '/invoice.html', historyHref: '/invoice-list.html' },
-  { key: 'packing_list',          name: 'Packing List',           desc: 'Detail packages, weights & dimensions. Can be created from an invoice.',    href: '/packinglist.html', historyHref: '/packinglist-list.html' },
+  { key: 'invoice',               name: 'Commercial Invoice',     desc: 'Buat invoice ekspor/impor profesional lengkap dengan items, charges & totals.', href: '/invoice.html', historyHref: '/invoice-list.html' },
+  { key: 'packing_list',          name: 'Packing List',           desc: 'Detail packages, berat & dimensi. Bisa dibuat langsung dari sebuah invoice.',    href: '/packinglist.html', historyHref: '/packinglist-list.html' },
   // Proforma Invoice pakai halaman & tabel yang sama dengan Commercial
   // Invoice (dibedakan via doc_type) — jadi gateKey ikut feature 'invoice',
   // bukan toggle terpisah. Siapapun yang boleh bikin Commercial Invoice
   // otomatis boleh bikin Proforma juga.
   { key: 'proforma_invoice', gateKey: 'invoice', name: 'Proforma Invoice',
-    desc: 'Pre-shipment quotations for buyers to arrange payment/LC — convert to Commercial Invoice once shipment is confirmed.',
+    desc: 'Penawaran pra-pengiriman untuk buyer mengurus pembayaran/LC — bisa di-convert jadi Commercial Invoice begitu shipment dikonfirmasi.',
     href: '/invoice.html?type=proforma', historyHref: '/invoice-list.html?type=proforma' },
-  { key: 'purchase_order',        name: 'Purchase Order',         desc: 'Issue POs to suppliers with itemized goods, terms & totals.',                href: '/purchase-order.html', historyHref: '/purchase-order-list.html' },
-  { key: 'sales_order',           name: 'Sales Order',            desc: 'Confirm orders from customers before converting to invoice.',               href: '/sales-order.html', historyHref: '/sales-order-list.html' },
-  { key: 'shipping_instruction',  name: 'Shipping Instruction',   desc: 'Instruct your forwarder/carrier on booking, routing & B/L details.',        href: '/shipping-instruction.html', historyHref: '/shipping-instruction-list.html' },
-  { key: 'delivery_note',         name: 'Delivery Note',          desc: 'Proof-of-delivery document with items, vehicle & signatures.',              href: '/delivery-note.html', historyHref: '/delivery-note-list.html' },
-  { key: 'shipping_rate',         name: 'Shipping Rate Checker',  desc: 'Look up shipping rates. (Coming soon)',                                     href: null },
-  { key: 'duty_tax',              name: 'Duty & Tax Calculator',  desc: 'Estimate duties & taxes. (Coming soon)',                                    href: null },
-  { key: 'quotation',             name: 'Quotation',              desc: 'Send price quotations to customers. (Coming soon)',                         href: null },
-  { key: 'certificate_of_origin', name: 'Certificate of Origin',  desc: 'COO documents. (Coming soon)',                                              href: null },
-  { key: 'landed_cost',           name: 'Landed Cost Calculator', desc: 'Total landed cost estimates. (Coming soon)',                                href: null },
+  { key: 'purchase_order',        name: 'Purchase Order',         desc: 'Terbitkan PO ke supplier lengkap dengan daftar barang, terms & totalnya.',   href: '/purchase-order.html', historyHref: '/purchase-order-list.html' },
+  { key: 'sales_order',           name: 'Sales Order',            desc: 'Konfirmasi order dari customer sebelum di-convert jadi invoice.',            href: '/sales-order.html', historyHref: '/sales-order-list.html' },
+  { key: 'shipping_instruction',  name: 'Shipping Instruction',   desc: 'Instruksi ke forwarder/carrier soal booking, routing & detail B/L.',         href: '/shipping-instruction.html', historyHref: '/shipping-instruction-list.html' },
+  { key: 'delivery_note',         name: 'Delivery Note',          desc: 'Bukti serah-terima barang, lengkap dengan items, kendaraan & tanda tangan.', href: '/delivery-note.html', historyHref: '/delivery-note-list.html' },
+  { key: 'shipping_rate',         name: 'Shipping Rate Checker',  desc: 'Cek tarif pengiriman. (Segera hadir)',                                       href: null },
+  { key: 'duty_tax',              name: 'Duty & Tax Calculator',  desc: 'Estimasi bea masuk & pajak. (Segera hadir)',                                 href: null },
+  { key: 'quotation',             name: 'Quotation',              desc: 'Kirim penawaran harga ke customer. (Segera hadir)',                          href: null },
+  { key: 'certificate_of_origin', name: 'Certificate of Origin',  desc: 'Dokumen COO. (Segera hadir)',                                                href: null },
+  { key: 'landed_cost',           name: 'Landed Cost Calculator', desc: 'Estimasi total landed cost. (Segera hadir)',                                 href: null },
 ];
 
 (async function initDashboard() {
@@ -58,23 +58,23 @@ const FEATURE_CATALOG = [
 
     if (enabled && !comingSoon) {
       card.innerHTML = `
-        <span class="badge badge-active">Active</span>
+        <span class="badge badge-active">Aktif</span>
         <h3>${f.name}</h3>
         <p>${f.desc}</p>
         <div style="display:flex; gap:8px;">
-          <a class="btn btn-primary" href="${f.href}">Open</a>
-          ${f.historyHref ? `<a class="btn btn-secondary" href="${f.historyHref}">History</a>` : ''}
+          <a class="btn btn-primary" href="${f.href}">Buka</a>
+          ${f.historyHref ? `<a class="btn btn-secondary" href="${f.historyHref}">Riwayat</a>` : ''}
         </div>`;
     } else {
       card.innerHTML = `
-        <span class="badge badge-locked">${comingSoon ? 'Coming Soon' : 'Locked'}</span>
+        <span class="badge badge-locked">${comingSoon ? 'Segera Hadir' : 'Terkunci'}</span>
         <h3>${f.name}</h3>
         <p>${f.desc}</p>
         <button class="btn btn-secondary" disabled ${
           !enabled && !comingSoon
-            ? 'title="Contact administrator to enable this feature."' : ''
+            ? 'title="Hubungi administrator untuk mengaktifkan fitur ini."' : ''
         }>
-          ${comingSoon ? 'Unavailable' : '🔒 Locked'}
+          ${comingSoon ? 'Belum Tersedia' : '🔒 Terkunci'}
         </button>`;
     }
     grid.appendChild(card);

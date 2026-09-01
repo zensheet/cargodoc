@@ -50,9 +50,9 @@ function renderList() {
     container.innerHTML = `
       <div class="feature-card" style="text-align:center; padding:40px;">
         <p style="color:var(--text-muted);">
-          ${ALL_PLS.length ? 'No packing lists match your filter.' : 'No packing lists yet.'}
+          ${ALL_PLS.length ? 'Tidak ada packing list yang cocok dengan filter.' : 'Belum ada packing list.'}
         </p>
-        <a class="btn btn-primary" style="margin-top:12px;" href="/packinglist.html">+ Create First Packing List</a>
+        <a class="btn btn-primary" style="margin-top:12px;" href="/packinglist.html">+ Buat Packing List Pertama</a>
       </div>`;
     return;
   }
@@ -157,7 +157,7 @@ async function downloadPl(id) {
   const { data: packages } = await supabase
     .from('packing_list_items').select('*').eq('packing_list_id', id)
     .order('created_at');
-  if (!pl) return alert('Packing list not found.');
+  if (!pl) return alert('Packing list tidak ditemukan.');
 
   const branding = await getBranding(); // js/branding.js
   const watermark = accountNeedsWatermark(window.APP_SESSION); // PRD §74
@@ -188,7 +188,7 @@ async function duplicatePl(id) {
 
   const { data: pl, error } = await supabase
     .from('packing_lists').select('*').eq('id', id).single();
-  if (error) return alert('Load failed: ' + error.message);
+  if (error) return alert('Gagal memuat: ' + error.message);
 
   const { data: packages } = await supabase
     .from('packing_list_items').select('*').eq('packing_list_id', id);
@@ -201,14 +201,14 @@ async function duplicatePl(id) {
 
   const { data: saved, error: insErr } = await supabase
     .from('packing_lists').insert(copy).select().single();
-  if (insErr) return alert('Duplicate failed: ' + insErr.message);
+  if (insErr) return alert('Gagal menduplikasi: ' + insErr.message);
 
   if (packages?.length) {
     const { error: pkgErr } = await supabase.from('packing_list_items').insert(
       packages.map(({ id:_, packing_list_id, created_at, ...p }) =>
         ({ ...p, packing_list_id: saved.id }))
     );
-    if (pkgErr) return alert('Packages copy failed: ' + pkgErr.message);
+    if (pkgErr) return alert('Gagal menyalin packages: ' + pkgErr.message);
   }
 
   alert(`✅ Duplicated as ${newNumber}`);
@@ -220,7 +220,7 @@ async function deletePl(id, number) {
   if (!(await customConfirm(`Delete packing list ${number}?\n\nThis action is PERMANENT and cannot be undone.`))) return;
   const { error } = await supabase
     .from('packing_lists').delete().eq('id', id);
-  if (error) return alert('Delete failed: ' + error.message);
+  if (error) return alert('Gagal menghapus: ' + error.message);
   await loadPls();
 }
 

@@ -23,22 +23,22 @@ function ensureGuestAuthModal() {
   div.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:200;';
   div.innerHTML = `
     <div class="feature-card" style="max-width:380px; width:92%; margin:10vh auto 0;">
-      <h3 id="ga-title">Create a free account</h3>
+      <h3 id="ga-title">Buat akun gratis</h3>
       <p style="color:var(--text-muted); font-size:13px; margin:6px 0 14px;">
-        Your document is ready. Create a free account to save it. The
-        watermark-free PDF unlocks once your account is activated.
+        Dokumen Anda sudah siap. Buat akun gratis untuk menyimpannya.
+        PDF tanpa watermark aktif setelah akun Anda diaktivasi admin.
       </p>
       <div id="ga-error" class="alert alert-error" hidden></div>
       <label for="ga-email">Email</label>
-      <input id="ga-email" type="email" placeholder="you@company.com" autocomplete="email">
+      <input id="ga-email" type="email" placeholder="anda@perusahaan.com" autocomplete="email">
       <label for="ga-password">Password</label>
-      <input id="ga-password" type="password" placeholder="Minimum 6 characters" autocomplete="new-password">
-      <button class="btn btn-primary btn-block" id="ga-submit" onclick="guestAuthSubmit()">Create Free Account</button>
+      <input id="ga-password" type="password" placeholder="Minimal 6 karakter" autocomplete="new-password">
+      <button class="btn btn-primary btn-block" id="ga-submit" onclick="guestAuthSubmit()">Buat Akun Gratis</button>
       <p style="text-align:center; margin-top:14px; font-size:13px;">
-        <a href="#" id="ga-toggle-link" onclick="guestAuthToggleMode(); return false;">Already have an account? Sign in</a>
+        <a href="#" id="ga-toggle-link" onclick="guestAuthToggleMode(); return false;">Sudah punya akun? Masuk</a>
       </p>
       <button class="btn btn-secondary btn-sm" style="width:100%; margin-top:10px;"
-              onclick="closeGuestAuthModal()">Cancel</button>
+              onclick="closeGuestAuthModal()">Batal</button>
     </div>`;
   document.body.appendChild(div);
 
@@ -77,11 +77,11 @@ function guestAuthToggleMode() {
 function applyGuestAuthMode() {
   const isSignup = GUEST_AUTH_MODE === 'signup';
   document.getElementById('ga-title').textContent =
-    isSignup ? 'Create a free account' : 'Sign in to your account';
+    isSignup ? 'Buat akun gratis' : 'Masuk ke akun Anda';
   document.getElementById('ga-submit').textContent =
-    isSignup ? 'Create Free Account' : 'Sign In';
+    isSignup ? 'Buat Akun Gratis' : 'Masuk';
   document.getElementById('ga-toggle-link').textContent =
-    isSignup ? 'Already have an account? Sign in' : "Don't have an account? Sign up";
+    isSignup ? 'Sudah punya akun? Masuk' : 'Belum punya akun? Daftar';
 }
 
 async function guestAuthSubmit() {
@@ -93,13 +93,13 @@ async function guestAuthSubmit() {
 
   errBox.hidden = true;
   if (!email || !password) {
-    errBox.textContent = 'Email and password are required.';
+    errBox.textContent = 'Email dan password wajib diisi.';
     errBox.hidden = false;
     return;
   }
 
   btn.disabled = true;
-  btn.textContent = isSignup ? 'Creating account...' : 'Signing in...';
+  btn.textContent = isSignup ? 'Membuat akun...' : 'Sedang masuk...';
 
   const result = isSignup
     ? await supabase.auth.signUp({ email, password })
@@ -109,7 +109,7 @@ async function guestAuthSubmit() {
     errBox.textContent = result.error.message;
     errBox.hidden = false;
     btn.disabled = false;
-    btn.textContent = isSignup ? 'Create Free Account' : 'Sign In';
+    btn.textContent = isSignup ? 'Buat Akun Gratis' : 'Masuk';
     return;
   }
 
@@ -118,16 +118,16 @@ async function guestAuthSubmit() {
   // email" pernah dinyalakan manual di Supabase Auth settings, session
   // akan kosong -- kasih pesan yang jelas alih-alih diam-diam gagal.
   if (!result.data.session) {
-    errBox.textContent = 'Please check your email to confirm your account, then sign in.';
+    errBox.textContent = 'Silakan cek email Anda untuk konfirmasi akun, lalu masuk.';
     errBox.hidden = false;
     btn.disabled = false;
-    btn.textContent = isSignup ? 'Create Free Account' : 'Sign In';
+    btn.textContent = isSignup ? 'Buat Akun Gratis' : 'Masuk';
     return;
   }
 
   await refreshSession(); // js/guard.js -> isi ulang window.APP_SESSION
 
-  btn.textContent = 'Saving your document...';
+  btn.textContent = 'Menyimpan dokumen Anda...';
 
   try {
     if (typeof window.__guestAuthCallback === 'function') {
@@ -138,10 +138,10 @@ async function guestAuthSubmit() {
     // Auth-nya sudah sukses, tapi save dokumen gagal -- jangan tutup modal
     // diam-diam, kasih tau apa yang terjadi supaya user tidak kehilangan
     // draft-nya tanpa penjelasan.
-    errBox.textContent = 'Signed in, but saving your document failed: ' + (e.message || e);
+    errBox.textContent = 'Berhasil masuk, tapi gagal menyimpan dokumen: ' + (e.message || e);
     errBox.hidden = false;
     btn.disabled = false;
-    btn.textContent = isSignup ? 'Create Free Account' : 'Sign In';
+    btn.textContent = isSignup ? 'Buat Akun Gratis' : 'Masuk';
   }
 }
 
@@ -154,6 +154,6 @@ function renderGuestHeader() {
   const info = document.getElementById('header-user-info');
   if (!info) return;
   info.innerHTML = `
-    <span style="color:var(--text-muted);">Guest Mode</span>
-    <a href="/login.html" class="btn btn-secondary btn-sm">Login</a>`;
+    <span style="color:var(--text-muted);">Mode Tamu</span>
+    <a href="/login.html" class="btn btn-secondary btn-sm">Masuk</a>`;
 }
