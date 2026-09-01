@@ -68,8 +68,14 @@ async function renderDocTrail(currentKey, row) {
     }
   }
 
-  if (!lines.length) return '';
+  const shipmentLink =
+    `<a href="/shipment.html?type=${currentKey}&id=${row.id}" style="font-size:13px;">🔗 View Full Shipment Trail</a>`;
+
+  if (!lines.length) {
+    return `<div style="margin:12px 0;">${shipmentLink}</div>`;
+  }
   return `<div style="background:var(--bg); border-radius:var(--radius); padding:10px 14px; margin:12px 0; font-size:13px;">
     ${lines.join('<br>')}
+    <br><br>${shipmentLink}
   </div>`;
 }
