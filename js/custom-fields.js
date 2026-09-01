@@ -45,6 +45,7 @@ async function loadFieldDefs() {
     .from('custom_field_definitions')
     .select('*')
     .or(`applies_to.eq.both,applies_to.eq.${CF_CONTEXT}`)
+    .eq('is_item_field', false) // field level-item ditangani js/item-custom-fields.js, bukan di sini
     .order('sort_order');
   CF_DEFS = data || [];
 }

@@ -247,13 +247,14 @@ function renderFieldDefs() {
   el.innerHTML = `
     <table class="data-table">
       <thead><tr>
-        <th>Label</th><th>Key</th><th>Applies To</th><th>Suggested</th><th>Actions</th>
+        <th>Label</th><th>Key</th><th>Applies To</th><th>Scope</th><th>Suggested</th><th>Actions</th>
       </tr></thead>
       <tbody>${FIELD_DEFS.map(d => `
         <tr>
           <td><strong>${esc(d.field_label)}</strong></td>
           <td><code>${esc(d.field_key)}</code></td>
           <td>${esc(APPLIES_LABEL[d.applies_to] || d.applies_to)}</td>
+          <td>${d.is_item_field ? 'Per Line Item' : 'Whole Document'}</td>
           <td>${d.is_suggested ? '✅' : '—'}</td>
           <td style="white-space:nowrap;">
             <button class="btn btn-danger btn-sm" onclick="deleteFieldDef('${d.id}', '${esc(d.field_label)}')">Delete</button>
@@ -272,9 +273,11 @@ async function saveFieldDef() {
   if (!field_key) { status.style.color = 'var(--danger)'; status.textContent = 'Label must contain letters/numbers.'; return; }
 
   const applies_to = document.getElementById('cfd-applies').value;
+  const is_item_field = document.getElementById('cfd-scope').value === 'item';
   const is_suggested = document.getElementById('cfd-suggested').checked;
 
-  if (FIELD_DEFS.some(d => d.field_key === field_key && (d.applies_to === applies_to || d.applies_to === 'both' || applies_to === 'both'))) {
+  if (FIELD_DEFS.some(d => d.field_key === field_key && d.is_item_field === is_item_field
+      && (d.applies_to === applies_to || d.applies_to === 'both' || applies_to === 'both'))) {
     status.style.color = 'var(--danger)'; status.textContent = 'A field with this label already exists for this scope.'; return;
   }
 
@@ -284,6 +287,7 @@ async function saveFieldDef() {
     field_key,
     field_label: label,
     applies_to,
+    is_item_field,
     is_suggested,
     sort_order: FIELD_DEFS.length + 1,
   });

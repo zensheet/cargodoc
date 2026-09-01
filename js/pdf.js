@@ -57,6 +57,41 @@ async function drawDocHeader(pdf, title, docNumber, docDate, branding, W, M) {
 }
 
 // ============================================
+// Gambar ulang baris header tabel item (shading abu-abu + label kolom).
+// Dipanggil 2 kali per tabel: sekali sebelum loop mulai, dan sekali lagi
+// SETIAP kali halaman baru dibuka di tengah loop -- supaya kolom
+// DESCRIPTION/QTY/dst selalu ada di tiap halaman, bukan cuma halaman
+// pertama (sebelumnya: kalau item-nya sampai berhalaman-halaman, halaman
+// ke-2 dst cuma keliatan angka tanpa judul kolom).
+// ============================================
+function drawTableHeader(pdf, cols, y, W, M) {
+  pdf.setFont(undefined, 'bold'); pdf.setFontSize(8); pdf.setTextColor(0);
+  pdf.setFillColor(240, 243, 248);
+  pdf.rect(M, y - 4, W - 2 * M, 7, 'F');
+  cols.forEach(c => pdf.text(c.label, c.x, y, { align: c.align || 'left' }));
+  return y + 8;
+}
+
+// ============================================
+// Baris kecil di bawah item, isinya custom field level-item (mis. "Model
+// Name: XL-2024") -- lihat sql/24-item-level-custom-fields.sql. Cuma
+// dipakai Invoice & Packing List (satu-satunya 2 dokumen yang mendukung
+// custom field). TIDAK menambah kolom baru di tabel (biar tidak perlu
+// hitung ulang lebar semua kolom yang sudah ada) -- cukup baris kecil
+// abu-abu miring persis di bawah row utama, dan HANYA muncul untuk item
+// yang benar-benar diisi (item tanpa custom field tidak makan tempat
+// sama sekali).
+// ============================================
+function drawItemCustomFieldsLine(pdf, it, y, M, W) {
+  const entries = Object.entries(it.custom_fields || {}).filter(([, v]) => v);
+  if (!entries.length) return y;
+  pdf.setFontSize(7); pdf.setFont(undefined, 'italic'); pdf.setTextColor(110);
+  pdf.text(entries.map(([k, v]) => `${k}: ${v}`).join('   |   '), M + 3, y, { maxWidth: W - 2 * M - 3 });
+  pdf.setFont(undefined, 'normal'); pdf.setFontSize(8); pdf.setTextColor(0);
+  return y + 4;
+}
+
+// ============================================
 // COMMERCIAL INVOICE PDF
 // ============================================
 
@@ -122,7 +157,6 @@ async function generateInvoicePDF(data) {
   }
 
   // Items table
-  pdf.setFontSize(8); pdf.setFont(undefined, 'bold');
   const cols = [
     { label: 'DESCRIPTION', x: M, w: 60 },
     { label: 'HS CODE', x: M + 62, w: 20 },
@@ -131,14 +165,15 @@ async function generateInvoicePDF(data) {
     { label: 'UNIT PRICE', x: 156, w: 20, align: 'right' },
     { label: 'AMOUNT', x: W - M - 20, w: 20, align: 'right' },
   ];
-  pdf.setFillColor(240, 243, 248);
-  pdf.rect(M, y - 4, W - 2 * M, 7, 'F');
-  cols.forEach(c => pdf.text(c.label, c.x, y, { align: c.align || 'left' }));
-  y += 8;
+  y = drawTableHeader(pdf, cols, y, W, M);
 
   pdf.setFont(undefined, 'normal'); pdf.setFontSize(8);
   (items || []).forEach(it => {
-    if (y > 255) { pdf.addPage(); y = 20; }
+    if (y > 255) {
+      pdf.addPage();
+      y = drawTableHeader(pdf, cols, 20, W, M);
+      pdf.setFont(undefined, 'normal'); pdf.setFontSize(8);
+    }
     const vals = [
       it.description || '', it.hs_code || '',
       String(it.quantity ?? ''), it.unit || '',
@@ -148,6 +183,7 @@ async function generateInvoicePDF(data) {
     cols.forEach((c, i) => pdf.text(vals[i], c.x, y, { align: c.align || 'left', maxWidth: c.w }));
     y += 5.5;
     pdf.setDrawColor(230); pdf.line(M, y - 3, W - M, y - 3);
+    y = drawItemCustomFieldsLine(pdf, it, y, M, W); // sql/24 -- mis. "Model Name: XL-2024"
   });
 
   // Totals (Empty Field Rule — only show charges that are non-zero)
@@ -257,7 +293,6 @@ async function generatePurchaseOrderPDF(data) {
   }
 
   // Items table
-  pdf.setFontSize(8); pdf.setFont(undefined, 'bold');
   const cols = [
     { label: 'DESCRIPTION', x: M, w: 66 },
     { label: 'SKU', x: M + 68, w: 20 },
@@ -266,14 +301,15 @@ async function generatePurchaseOrderPDF(data) {
     { label: 'UNIT PRICE', x: 156, w: 20, align: 'right' },
     { label: 'AMOUNT', x: W - M - 20, w: 20, align: 'right' },
   ];
-  pdf.setFillColor(240, 243, 248);
-  pdf.rect(M, y - 4, W - 2 * M, 7, 'F');
-  cols.forEach(c => pdf.text(c.label, c.x, y, { align: c.align || 'left' }));
-  y += 8;
+  y = drawTableHeader(pdf, cols, y, W, M);
 
   pdf.setFont(undefined, 'normal'); pdf.setFontSize(8);
   (items || []).forEach(it => {
-    if (y > 255) { pdf.addPage(); y = 20; }
+    if (y > 255) {
+      pdf.addPage();
+      y = drawTableHeader(pdf, cols, 20, W, M);
+      pdf.setFont(undefined, 'normal'); pdf.setFontSize(8);
+    }
     const vals = [
       it.description || '', it.sku || '',
       String(it.quantity ?? ''), it.unit || '',
@@ -374,7 +410,6 @@ async function generateSalesOrderPDF(data) {
   }
 
   // Items table
-  pdf.setFontSize(8); pdf.setFont(undefined, 'bold');
   const cols = [
     { label: 'DESCRIPTION', x: M, w: 66 },
     { label: 'SKU', x: M + 68, w: 20 },
@@ -383,14 +418,15 @@ async function generateSalesOrderPDF(data) {
     { label: 'UNIT PRICE', x: 156, w: 20, align: 'right' },
     { label: 'AMOUNT', x: W - M - 20, w: 20, align: 'right' },
   ];
-  pdf.setFillColor(240, 243, 248);
-  pdf.rect(M, y - 4, W - 2 * M, 7, 'F');
-  cols.forEach(c => pdf.text(c.label, c.x, y, { align: c.align || 'left' }));
-  y += 8;
+  y = drawTableHeader(pdf, cols, y, W, M);
 
   pdf.setFont(undefined, 'normal'); pdf.setFontSize(8);
   (items || []).forEach(it => {
-    if (y > 255) { pdf.addPage(); y = 20; }
+    if (y > 255) {
+      pdf.addPage();
+      y = drawTableHeader(pdf, cols, 20, W, M);
+      pdf.setFont(undefined, 'normal'); pdf.setFontSize(8);
+    }
     const vals = [
       it.description || '', it.sku || '',
       String(it.quantity ?? ''), it.unit || '',
@@ -474,7 +510,6 @@ async function generatePackingListPDF(data) {
   }
 
   // Packages table
-  pdf.setFontSize(8); pdf.setFont(undefined, 'bold');
   const cols = [
     { label: 'PKG', x: M, w: 12 },
     { label: 'DESCRIPTION', x: M + 14, w: 44 },
@@ -485,14 +520,15 @@ async function generatePackingListPDF(data) {
     { label: 'CBM', x: 162, w: 16, align: 'right' },
     { label: 'TYPE', x: W - M - 18, w: 18 },
   ];
-  pdf.setFillColor(240, 243, 248);
-  pdf.rect(M, y - 4, W - 2 * M, 7, 'F');
-  cols.forEach(c => pdf.text(c.label, c.x, y, { align: c.align || 'left' }));
-  y += 8;
+  y = drawTableHeader(pdf, cols, y, W, M);
 
   pdf.setFont(undefined, 'normal'); pdf.setFontSize(8);
   packages.forEach(p => {
-    if (y > 255) { pdf.addPage(); y = 20; }
+    if (y > 255) {
+      pdf.addPage();
+      y = drawTableHeader(pdf, cols, 20, W, M);
+      pdf.setFont(undefined, 'normal'); pdf.setFontSize(8);
+    }
     const vals = [
       p.package_number || '', p.description || '',
       String(p.quantity ?? ''), p.unit || '',
@@ -504,6 +540,7 @@ async function generatePackingListPDF(data) {
     cols.forEach((c, i) => pdf.text(vals[i], c.x, y, { align: c.align || 'left', maxWidth: c.w }));
     y += 5.5;
     pdf.setDrawColor(230); pdf.line(M, y - 3, W - M, y - 3);
+    y = drawItemCustomFieldsLine(pdf, p, y, M, W); // sql/24 -- mis. "Model Name: XL-2024"
   });
 
   // Totals
@@ -606,7 +643,6 @@ async function generateShippingInstructionPDF(data) {
   }
 
   // Cargo table (tanpa harga -- SI bukan dokumen komersial)
-  pdf.setFontSize(8); pdf.setFont(undefined, 'bold');
   const cols = [
     { label: 'DESCRIPTION', x: M, w: 56 },
     { label: 'HS CODE', x: M + 58, w: 18 },
@@ -616,15 +652,16 @@ async function generateShippingInstructionPDF(data) {
     { label: 'G.WEIGHT (KG)', x: 168, w: 18, align: 'right' },
     { label: 'CBM', x: W - M - 12, w: 12, align: 'right' },
   ];
-  pdf.setFillColor(240, 243, 248);
-  pdf.rect(M, y - 4, W - 2 * M, 7, 'F');
-  cols.forEach(c => pdf.text(c.label, c.x, y, { align: c.align || 'left' }));
-  y += 8;
+  y = drawTableHeader(pdf, cols, y, W, M);
 
   pdf.setFont(undefined, 'normal'); pdf.setFontSize(8);
   let totalPkgs = 0, totalGross = 0, totalCbm = 0;
   (items || []).forEach(it => {
-    if (y > 255) { pdf.addPage(); y = 20; }
+    if (y > 255) {
+      pdf.addPage();
+      y = drawTableHeader(pdf, cols, 20, W, M);
+      pdf.setFont(undefined, 'normal'); pdf.setFontSize(8);
+    }
     totalPkgs += it.package_count || 0;
     totalGross += it.gross_weight || 0;
     totalCbm += it.measurement || 0;
@@ -723,7 +760,6 @@ async function generateDeliveryNotePDF(data) {
   }
 
   // Items table (tanpa harga -- DN bukan dokumen komersial)
-  pdf.setFontSize(8); pdf.setFont(undefined, 'bold');
   const cols = [
     { label: 'DESCRIPTION', x: M, w: 74 },
     { label: 'SKU', x: M + 76, w: 24 },
@@ -731,15 +767,16 @@ async function generateDeliveryNotePDF(data) {
     { label: 'PKG TYPE', x: 164, w: 20 },
     { label: 'QTY', x: W - M - 20, w: 20, align: 'right' },
   ];
-  pdf.setFillColor(240, 243, 248);
-  pdf.rect(M, y - 4, W - 2 * M, 7, 'F');
-  cols.forEach(c => pdf.text(c.label, c.x, y, { align: c.align || 'left' }));
-  y += 8;
+  y = drawTableHeader(pdf, cols, y, W, M);
 
   pdf.setFont(undefined, 'normal'); pdf.setFontSize(8);
   let totalPkgs = 0;
   (items || []).forEach(it => {
-    if (y > 240) { pdf.addPage(); y = 20; }
+    if (y > 240) {
+      pdf.addPage();
+      y = drawTableHeader(pdf, cols, 20, W, M);
+      pdf.setFont(undefined, 'normal'); pdf.setFontSize(8);
+    }
     totalPkgs += it.package_count || 0;
     const vals = [
       it.description || '', it.sku || '',

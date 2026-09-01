@@ -132,10 +132,10 @@ function accountNeedsWatermark(session) {
 function showActivationModal(opts = {}) {
   const email = opts.email || window.APP_SESSION?.profile?.email || '';
   const waMsg = encodeURIComponent(
-    `Halo Admin, saya ingin aktivasi akun CargoDoc saya.${email ? `\nEmail: ${email}` : ''}`);
+    `Halo Admin, saya ingin aktivasi akun ${APP_NAME} saya.${email ? `\nEmail: ${email}` : ''}`);
   const waHref = `https://wa.me/${SUPPORT_WHATSAPP_INTL}?text=${waMsg}`;
-  const mailHref = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Aktivasi Akun CargoDoc')}` +
-    `&body=${encodeURIComponent(`Halo Admin, saya ingin aktivasi akun CargoDoc saya.${email ? `\nEmail: ${email}` : ''}`)}`;
+  const mailHref = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(`Aktivasi Akun ${APP_NAME}`)}` +
+    `&body=${encodeURIComponent(`Halo Admin, saya ingin aktivasi akun ${APP_NAME} saya.${email ? `\nEmail: ${email}` : ''}`)}`;
 
   const close = () => {
     document.getElementById('activation-modal-overlay').hidden = true;
@@ -152,39 +152,42 @@ function showActivationModal(opts = {}) {
   overlay.onclick = e => { if (e.target === overlay) close(); };
 
   overlay.innerHTML = `
-    <div class="feature-card" style="max-width:400px; width:92%; margin:8vh auto 0; max-height:84vh; overflow-y:auto;">
-      <h3>Aktivasi Akun CargoDoc</h3>
-      <p style="color:var(--text-muted); font-size:14px; margin:10px 0;">
-        ${opts.justSaved
-          ? 'Akun Anda berhasil dibuat, dan dokumen Anda sudah tersimpan — namun akun belum aktif.'
-          : 'Akun Anda belum aktif.'}
-        Anda tetap bisa membuat & menyimpan dokumen sekarang; hanya PDF final
-        tanpa watermark yang perlu aktivasi dulu.
+    <div class="feature-card" style="max-width:420px; width:92%; margin:8vh auto 0; max-height:88vh; overflow-y:auto;">
+      <h3>Aktivasi Akun ${APP_NAME}</h3>
+      <p style="color:var(--text-muted); font-size:14px; margin:10px 0 14px;">
+        ${opts.justSaved ? 'Dokumen Anda sudah tersimpan. ' : ''}Akun Anda ${opts.justSaved ? '' : 'sudah'} berhasil dibuat, namun belum aktif.
       </p>
-      <div style="background:var(--bg-subtle,#f3f4f6); border-radius:10px; padding:14px; margin-bottom:14px;">
-        <p style="font-weight:700; margin-bottom:4px;">🎉 Early Access — Rp50.000 Lifetime</p>
-        <p style="color:var(--text-muted); font-size:13px; margin:0;">
+
+      <div style="background:var(--warning-bg); border-radius:8px; padding:14px; margin-bottom:14px;">
+        <p style="font-weight:600; margin:0 0 4px;">🎉 Early Access — ${ACTIVATION_PRICE_DISPLAY} Lifetime</p>
+        <p style="font-size:13px; color:var(--text-muted); margin:0;">
           Sekali bayar, tanpa biaya bulanan dan tanpa biaya per dokumen.
-          Aktivasi memberikan akses ke seluruh fitur CargoDoc yang tersedia
-          saat ini, termasuk pembuatan dan download dokumen PDF tanpa watermark.
         </p>
       </div>
-      <p style="color:var(--text-muted); font-size:13px; margin-bottom:8px;">
-        Untuk pembayaran & aktivasi, silakan hubungi Admin:
+
+      <p style="font-size:13px; margin:0 0 14px;">
+        Aktivasi memberikan akses ke seluruh fitur ${APP_NAME} yang tersedia saat
+        ini, termasuk pembuatan dan download dokumen PDF tanpa watermark.
       </p>
+
+      <p style="font-size:13px; margin:0 0 6px;">Untuk pembayaran dan aktivasi, silakan hubungi Admin:</p>
+      <p style="font-size:13px; margin:0 0 4px;">
+        WhatsApp: <a href="${waHref}" target="_blank" rel="noopener">${SUPPORT_WHATSAPP_DISPLAY}</a>
+      </p>
+      <p style="font-size:13px; margin:0 0 14px;">
+        Email: <a href="${mailHref}">${SUPPORT_EMAIL}</a>
+      </p>
+
+      <p style="font-size:12px; color:var(--text-muted); margin:0 0 16px;">
+        Setelah pembayaran dikonfirmasi, Admin akan mengaktifkan akun Anda.
+      </p>
+
       <a href="${waHref}" target="_blank" rel="noopener"
-         class="btn btn-primary btn-block" style="margin-bottom:8px; text-align:center; text-decoration:none;">
-        💬 WhatsApp: ${SUPPORT_WHATSAPP_DISPLAY}
+         class="btn btn-primary btn-block" style="text-align:center; text-decoration:none;">
+        Hubungi Admin
       </a>
-      <a href="${mailHref}"
-         class="btn btn-secondary btn-block" style="text-align:center; text-decoration:none;">
-        ✉️ ${SUPPORT_EMAIL}
-      </a>
-      <p style="color:var(--text-muted); font-size:12px; margin:12px 0 0;">
-        Admin akan mengaktifkan akun Anda setelah pembayaran dikonfirmasi.
-      </p>
-      <button class="btn btn-secondary btn-sm" style="width:100%; margin-top:14px;" id="activation-modal-ok">
-        Mengerti
+      <button class="btn btn-secondary btn-sm" style="width:100%; margin-top:10px;" id="activation-modal-ok">
+        Nanti Saja
       </button>
     </div>`;
   document.getElementById('activation-modal-ok').onclick = close;

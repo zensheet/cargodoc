@@ -15,3 +15,5 @@ const SUPABASE_ANON_KEY = 'sb_publishable_ntXGp__JVOsbBadLv_HVGQ_frRuuZbh'; // A
 const SUPPORT_WHATSAPP_DISPLAY = '0812-9065-0963'; // format tampil ke user
 const SUPPORT_WHATSAPP_INTL = '6281290650963';     // format wa.me (62 = kode negara, tanpa 0 di depan)
 const SUPPORT_EMAIL = 'admin@zensheet.my.id';
+const ACTIVATION_PRICE_DISPLAY = 'Rp50.000'; // Early Access, lifetime -- lihat js/guard.js showActivationModal()
+const APP_NAME = 'CargoDoc'; // nama produk yang dipakai di copy customer-facing (popup aktivasi, dll)

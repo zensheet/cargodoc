@@ -3,19 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Shipping Instruction — CargoDoc</title>
+<title>Shipping Instruction — Invoice Shipping Generator</title>
 <link rel="stylesheet" href="css/app.css">
-<link rel="icon" href="assets/favicon.ico" sizes="any">
-<link rel="icon" type="image/png" href="assets/favicon-32.png" sizes="32x32">
-<link rel="icon" type="image/png" href="assets/favicon-192.png" sizes="192x192">
-<link rel="apple-touch-icon" href="assets/favicon-180.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 
   <header class="app-header">
-    <div class="brand"><a href="/app.html" style="text-decoration:none;color:inherit;"><img src="assets/logo-cargodoc.webp" alt="CargoDoc" style="height:20px;vertical-align:middle;"></a> / Shipping Instruction</div>
+    <div class="brand"><a href="/app.html" style="text-decoration:none;color:inherit;">📦 ISG</a> / Shipping Instruction</div>
     <div class="user-info" id="header-user-info">
       <span id="user-name"></span>
       <a href="/shipping-instruction-list.html" class="btn btn-secondary btn-sm">History</a>
@@ -31,8 +27,9 @@
 
     <!-- Pending activation banner (PRD §74) -->
     <div id="pending-warning" class="alert alert-warning" hidden>
-      ⏳ Akun Anda belum aktif. Anda tetap bisa menyimpan shipping instruction ini, tapi PDF
-      yang diunduh masih ada watermark sampai admin mengaktivasi akun Anda.
+      ⏳ Your account is pending activation. You can save this shipping
+      instruction, but the downloaded PDF will include a watermark until
+      an administrator activates your account.
       <button class="btn btn-primary btn-sm" style="margin-top:8px;" onclick="showActivationModal()">Hubungi Admin</button>
     </div>
 
@@ -266,7 +263,6 @@
 
   <script src="js/config.js"></script>
   <script src="js/auth.js"></script>
-  <script src="js/notify.js"></script>
   <script src="js/guard.js"></script>
   <script src="js/guest-auth.js"></script>
   <script src="js/branding.js"></script>
