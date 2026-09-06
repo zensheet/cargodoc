@@ -19,9 +19,11 @@ let IS_GUEST = false; // true = belum login (PRD §73 guest mode)
     renderGuestHeader(); // js/guest-auth.js
   } else {
     document.getElementById('user-name').textContent = session.profile.email;
-    // PRD §74: customer sudah login tapi akunnya masih 'pending'
-    if (session.profile.status === 'pending') {
+    // 14-hari Free Trial (sql/25-trial-mode.sql): trial sudah lewat &
+    // belum upgrade -> banner + popup otomatis (sekali per sesi tab).
+    if (accountNeedsWatermark(session)) {
       document.getElementById('pending-warning').hidden = false;
+      showTrialExpiredOnce(session);
     }
   }
 
@@ -487,8 +489,9 @@ async function saveAndDownload() {
     guestAuthGate(async () => {
       const saved = await persistPackingList(data, 'final');
       const branding = await getBranding();
-      // PRD §74: baru signup -> status masih 'pending', jadi PDF-nya
-      // tetap watermark sampai admin klik "Activate".
+      // sql/25-trial-mode.sql: baru signup -> trial 14 hari LANGSUNG aktif,
+      // jadi watermark cuma muncul kalau (jarang terjadi) trial-nya sudah
+      // lewat SEBELUM proses signup ini selesai.
       const watermark = accountNeedsWatermark(window.APP_SESSION);
       await generatePackingListPDF({ packing_list: saved, ...data, branding, watermark });
       if (watermark) {

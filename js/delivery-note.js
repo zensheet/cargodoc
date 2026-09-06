@@ -3,7 +3,7 @@
 // Mengikuti pola persis js/purchase-order.js / js/invoice.js:
 //   - Guest mode: bisa diakses tanpa login (PRD §73/§74, lihat
 //     sql/23-guest-mode-dn-si.sql)
-//   - PRD §74 tetap berlaku: akun 'pending' -> PDF watermark
+//   - sql/25-trial-mode.sql: 14-hari trial gratis, watermark kalau lewat
 //   - Nomor otomatis DN-{YEAR}-{SEQ}, editable
 //   - Edit existing DN via ?id=<uuid> di URL
 //   - TIDAK ada harga/total -- DN cuma bukti serah-terima barang
@@ -21,9 +21,11 @@ let IS_GUEST = false; // true = belum login (PRD §73 guest mode)
     renderGuestHeader(); // js/guest-auth.js
   } else {
     document.getElementById('user-name').textContent = session.profile.email;
-    // PRD §74: customer sudah login tapi akunnya masih 'pending'
-    if (session.profile.status === 'pending') {
+    // 14-hari Free Trial (sql/25-trial-mode.sql): trial sudah lewat &
+    // belum upgrade -> banner + popup otomatis (sekali per sesi tab).
+    if (accountNeedsWatermark(session)) {
       document.getElementById('pending-warning').hidden = false;
+      showTrialExpiredOnce(session);
     }
   }
 

@@ -73,6 +73,8 @@ async function loadUsers() {
   const tbody = document.querySelector('#users-table tbody');
   tbody.innerHTML = '';
 
+  const now = new Date();
+
   for (const u of users || []) {
     const tr = document.createElement('tr');
 
@@ -85,31 +87,48 @@ async function loadUsers() {
         ${f.feature_name}</label>`;
     }).join('') + `</div>`;
 
-    const badgeClass = u.status === 'active' ? 'badge-active'
-      : u.status === 'pending' ? 'badge-pending' : 'badge-locked';
+    // sql/25-trial-mode.sql: status cuma 'active'/'locked' -- trial
+    // dihitung murni dari trial_ends_at (bukan dari status). NULL =
+    // paid/lifetime (admin-created atau sudah upgrade). Di masa depan =
+    // masih trial. Di masa lalu = trial habis, watermark aktif.
+    const trialEndsAt = u.trial_ends_at ? new Date(u.trial_ends_at) : null;
+    const isLocked = u.status === 'locked';
+    const isPaid = !isLocked && !trialEndsAt;
+    const isTrialActive = !isLocked && trialEndsAt && trialEndsAt > now;
+    const isTrialExpired = !isLocked && trialEndsAt && trialEndsAt <= now;
 
-    // PRD §74: akun 'pending' (self-signup, belum diverifikasi
-    // pembayarannya) -> tombol "Activate" (set status='active', PDF-nya
-    // langsung lepas watermark) + tetap bisa "Lock" kalau mau ditolak.
-    // Akun 'active' -> "Lock". Akun 'locked' -> "Unlock" (balik ke
-    // 'active', SAMA seperti perilaku sebelumnya).
+    let badgeClass, statusLabel;
+    if (isLocked) { badgeClass = 'badge-locked'; statusLabel = 'locked'; }
+    else if (isPaid) { badgeClass = 'badge-active'; statusLabel = 'active (paid)'; }
+    else if (isTrialActive) {
+      const daysLeft = Math.ceil((trialEndsAt - now) / 86400000);
+      badgeClass = 'badge-pending'; statusLabel = `trial (${daysLeft}d left)`;
+    } else { badgeClass = 'badge-pending'; statusLabel = 'trial expired'; }
+
+    // Akun trial (aktif ATAU sudah habis) -> tombol "Mark as Paid"
+    // (trial_ends_at dikosongkan = permanen tanpa watermark) + "+14
+    // Days" (perpanjang trial, mis. kalau customer minta lebih waktu
+    // sebelum mutusin bayar) + tetap bisa "Lock". Akun paid -> cuma
+    // "Lock". Akun locked -> "Unlock" (balik ke status 'active', trial
+    // sebelumnya TIDAK di-reset).
     let actions;
-    if (u.status === 'pending') {
-      actions = `<button class="btn btn-primary btn-sm" onclick="setStatus('${u.id}', 'active')">Activate</button>
-        <button class="btn btn-danger btn-sm" onclick="setStatus('${u.id}', 'locked')">Lock</button>`;
-    } else if (u.status === 'active') {
-      actions = `<button class="btn btn-danger btn-sm" onclick="setStatus('${u.id}', 'locked')">Lock</button>`;
-    } else {
+    if (isLocked) {
       actions = `<button class="btn btn-primary btn-sm" onclick="setStatus('${u.id}', 'active')">Unlock</button>`;
+    } else if (trialEndsAt) {
+      actions = `<button class="btn btn-primary btn-sm" onclick="markAsPaid('${u.id}')">Mark as Paid</button>
+        <button class="btn btn-secondary btn-sm" onclick="extendTrial('${u.id}')">+14 Days</button>
+        <button class="btn btn-danger btn-sm" onclick="setStatus('${u.id}', 'locked')">Lock</button>`;
+    } else {
+      actions = `<button class="btn btn-danger btn-sm" onclick="setStatus('${u.id}', 'locked')">Lock</button>`;
     }
 
     tr.innerHTML = `
       <td>${u.email}</td>
       <td>${u.full_name || '—'}</td>
       <td>${u.role}</td>
-      <td><span class="badge ${badgeClass}">${u.status}</span></td>
+      <td><span class="badge ${badgeClass}">${statusLabel}</span></td>
       <td>${badges}</td>
-      <td>${actions}</td>`;
+      <td style="white-space:nowrap;">${actions}</td>`;
     tbody.appendChild(tr);
   }
 }
@@ -123,15 +142,38 @@ async function toggleFeature(userId, featureId, enabled) {
   if (error) { alert('Gagal: ' + error.message); await loadUsers(); }
 }
 
-// ---------- STATUS: ACTIVATE / LOCK / UNLOCK ----------
-// PRD §74: 'pending' -> 'active' (Activate, biasanya setelah admin
-// verifikasi pembayaran) atau -> 'locked' (tolak). 'active' -> 'locked'.
-// 'locked' -> 'active' (Unlock, perilaku lama).
+// ---------- LOCK / UNLOCK ----------
+// 'locked' -> tidak bisa login sama sekali (lihat js/guard.js getSession()).
+// Unlock balik ke 'active', trial_ends_at TIDAK di-reset (kalau trial-nya
+// sudah habis sebelum di-lock, tetap habis setelah di-unlock).
 async function setStatus(userId, newStatus) {
   if (newStatus === 'locked'
       && !(await customConfirm('Lock this account? User will be denied access on next login/page load.'))) return;
   const { error } = await supabase
     .from('profiles').update({ status: newStatus }).eq('id', userId);
+  if (error) { alert('Gagal: ' + error.message); return; }
+  await loadUsers();
+}
+
+// ---------- MARK AS PAID (upgrade ke Lifetime) ----------
+// sql/25-trial-mode.sql: trial_ends_at dikosongkan (NULL) = permanen
+// tanpa watermark, tidak pernah dihitung ulang lagi kapan pun.
+async function markAsPaid(userId) {
+  if (!(await customConfirm('Mark this account as paid (Lifetime Access)? Watermark will be removed permanently.'))) return;
+  const { error } = await supabase
+    .from('profiles').update({ trial_ends_at: null }).eq('id', userId);
+  if (error) { alert('Gagal: ' + error.message); return; }
+  await loadUsers();
+}
+
+// ---------- EXTEND TRIAL +14 DAYS ----------
+// Selalu dihitung dari HARI INI (bukan menambah ke trial_ends_at lama),
+// supaya tetap "+14 hari mulai sekarang" walau trial-nya sudah lama habis.
+async function extendTrial(userId) {
+  if (!(await customConfirm('Extend this account\'s trial by 14 more days, starting today?'))) return;
+  const newTrialEnd = new Date(Date.now() + 14 * 86400000).toISOString();
+  const { error } = await supabase
+    .from('profiles').update({ trial_ends_at: newTrialEnd }).eq('id', userId);
   if (error) { alert('Gagal: ' + error.message); return; }
   await loadUsers();
 }

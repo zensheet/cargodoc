@@ -99,31 +99,45 @@ async function requireFeatureOrGuest(featureKey) {
 }
 
 /**
- * PRD §74 (Account Activation / Payment Gate).
- * PDF final TANPA watermark hanya untuk akun yang statusnya persis
- * 'active' (admin-created langsung aktif, atau self-signup yang sudah
- * di-klik "Activate" oleh admin setelah verifikasi pembayaran).
- *
- *  - Guest (belum login sama sekali)        -> selalu watermark.
- *  - Developer                              -> tidak pernah watermark.
- *  - Customer status 'pending' atau 'locked' -> watermark.
- *    (Locked sebenarnya sudah tidak bisa login sama sekali -- lihat
- *    getSession() -- tapi tetap dijaga di sini kalau-kalau dipanggil
- *    dari state APP_SESSION yang stale.)
- *  - Customer status 'active'               -> tidak watermark.
+ * PRD §74 → diganti model 14-hari Free Trial (sql/25-trial-mode.sql).
+ * PDF final TANPA watermark untuk:
+ *   - Developer (bypass total)
+ *   - Customer yang trial_ends_at masih di masa depan (masih trial)
+ *   - Customer yang trial_ends_at NULL (admin-created, atau sudah upgrade
+ *     ke paid lewat tombol "Mark as Paid" di admin.html)
+ * PDF pakai watermark untuk:
+ *   - Guest (belum login sama sekali)
+ *   - Customer status 'locked'
+ *   - Customer trial_ends_at sudah lewat (trial berakhir, belum bayar)
  */
 function accountNeedsWatermark(session) {
   if (!session) return true;
   if (session.profile.role === 'developer') return false;
-  return session.profile.status !== 'active';
+  if (session.profile.status === 'locked') return true;
+  const trialEndsAt = session.profile.trial_ends_at;
+  if (!trialEndsAt) return false; // paid/lifetime -- tidak pernah watermark
+  return new Date(trialEndsAt) <= new Date(); // watermark cuma kalau trial SUDAH lewat
 }
 
 /**
- * PRD §74 — Popup "Aktivasi Akun Diperlukan".
- * Dipanggil di 2 titik: (1) begitu guest baru saja signup & dokumennya
- * tersimpan (lihat *.js saveAndDownload/saveOnly, param opts.justSaved),
- * dan (2) lewat tombol "Hubungi Admin" di banner pending yang sudah ada
- * di app.html/invoice.html/dll.
+ * Sisa hari trial (bulat ke atas), atau null kalau bukan akun trial
+ * (paid/lifetime) atau sudah lewat. Dipakai buat banner info "Trial: N
+ * hari lagi" di dashboard/halaman dokumen.
+ */
+function trialDaysLeft(session) {
+  const trialEndsAt = session?.profile?.trial_ends_at;
+  if (!trialEndsAt) return null;
+  const ms = new Date(trialEndsAt) - new Date();
+  if (ms <= 0) return null;
+  return Math.ceil(ms / (1000 * 60 * 60 * 24));
+}
+
+/**
+ * Popup "Trial 14 Hari Berakhir" / upgrade ke Lifetime.
+ * Dipanggil di 3 titik: (1) otomatis begitu halaman dimuat & trial
+ * sudah lewat (sekali per sesi browser, lihat showTrialExpiredOnce()),
+ * (2) saat coba save/download dan watermark aktif (opts.justSaved), dan
+ * (3) lewat tombol "Hubungi Admin" di banner trial-expired.
  *
  * Link WA/email dibuat clickable + pesan WA di-prefill otomatis dengan
  * email akun (kalau session tersedia) supaya admin langsung tau akun
@@ -153,9 +167,9 @@ function showActivationModal(opts = {}) {
 
   overlay.innerHTML = `
     <div class="feature-card" style="max-width:420px; width:92%; margin:8vh auto 0; max-height:88vh; overflow-y:auto;">
-      <h3>Aktivasi Akun ${APP_NAME}</h3>
+      <h3>⏰ Trial 14 Hari Anda Sudah Berakhir</h3>
       <p style="color:var(--text-muted); font-size:14px; margin:10px 0 14px;">
-        ${opts.justSaved ? 'Dokumen Anda sudah tersimpan. ' : ''}Akun Anda ${opts.justSaved ? '' : 'sudah'} berhasil dibuat, namun belum aktif.
+        ${opts.justSaved ? 'Dokumen Anda sudah tersimpan. ' : ''}Masa trial gratis 14 hari untuk akun Anda sudah selesai, jadi PDF sekarang otomatis diberi watermark.
       </p>
 
       <div style="background:var(--warning-bg); border-radius:8px; padding:14px; margin-bottom:14px;">
@@ -166,11 +180,11 @@ function showActivationModal(opts = {}) {
       </div>
 
       <p style="font-size:13px; margin:0 0 14px;">
-        Aktivasi memberikan akses ke seluruh fitur ${APP_NAME} yang tersedia saat
-        ini, termasuk pembuatan dan download dokumen PDF tanpa watermark.
+        Upgrade ke Lifetime Access untuk terus pakai seluruh fitur ${APP_NAME}
+        tanpa batas waktu, termasuk pembuatan dan download dokumen PDF tanpa watermark.
       </p>
 
-      <p style="font-size:13px; margin:0 0 6px;">Untuk pembayaran dan aktivasi, silakan hubungi Admin:</p>
+      <p style="font-size:13px; margin:0 0 6px;">Untuk pembayaran dan upgrade, silakan hubungi Admin:</p>
       <p style="font-size:13px; margin:0 0 4px;">
         WhatsApp: <a href="${waHref}" target="_blank" rel="noopener">${SUPPORT_WHATSAPP_DISPLAY}</a>
       </p>
@@ -179,7 +193,7 @@ function showActivationModal(opts = {}) {
       </p>
 
       <p style="font-size:12px; color:var(--text-muted); margin:0 0 16px;">
-        Setelah pembayaran dikonfirmasi, Admin akan mengaktifkan akun Anda.
+        Setelah pembayaran dikonfirmasi, Admin akan meng-upgrade akun Anda ke Lifetime (watermark langsung hilang).
       </p>
 
       <a href="${waHref}" target="_blank" rel="noopener"
@@ -192,4 +206,19 @@ function showActivationModal(opts = {}) {
     </div>`;
   document.getElementById('activation-modal-ok').onclick = close;
   overlay.hidden = false;
+}
+
+/**
+ * Dipanggil di init tiap halaman berpelindung (app.html + 6 halaman
+ * dokumen). Kalau trial sudah lewat, munculkan popup upgrade OTOMATIS --
+ * tapi cuma SEKALI per sesi tab browser (sessionStorage), supaya tidak
+ * mengganggu tiap kali pindah halaman. Banner "trial expired" di
+ * halaman itu sendiri tetap selalu tampil (lihat masing-masing *.js),
+ * ini cuma untuk popupnya saja.
+ */
+function showTrialExpiredOnce(session) {
+  if (!accountNeedsWatermark(session)) return;
+  if (sessionStorage.getItem('trialExpiredModalShown') === '1') return;
+  sessionStorage.setItem('trialExpiredModalShown', '1');
+  showActivationModal();
 }

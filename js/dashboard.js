@@ -37,11 +37,21 @@ const FEATURE_CATALOG = [
   document.getElementById('welcome-name').textContent =
     session.profile.full_name || session.profile.email;
 
-  // PRD §74: kasih tau customer kalau akunnya masih 'pending' (self-signup,
-  // belum diaktivasi admin) -- dia tetap bisa pakai app, cuma PDF-nya
-  // masih watermark.
-  if (!isDev && session.profile.status === 'pending') {
-    document.getElementById('pending-banner').hidden = false;
+  // 14-hari Free Trial (sql/25-trial-mode.sql): kalau trial sudah lewat
+  // & belum upgrade ke Lifetime -> banner + popup otomatis (sekali per
+  // sesi tab). Selagi trial masih jalan, kasih info positif "N hari lagi".
+  if (!isDev) {
+    if (accountNeedsWatermark(session)) {
+      document.getElementById('pending-banner').hidden = false;
+      showTrialExpiredOnce(session);
+    } else {
+      const daysLeft = trialDaysLeft(session);
+      if (daysLeft != null) {
+        const el = document.getElementById('trial-info-banner');
+        el.textContent = `🎁 Trial gratis Anda: ${daysLeft} hari lagi. PDF masih tanpa watermark.`;
+        el.hidden = false;
+      }
+    }
   }
 
   const grid = document.getElementById('feature-grid');
