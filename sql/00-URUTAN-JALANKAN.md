@@ -162,6 +162,34 @@ sebelumnya (banyak pakai `references` / `ALTER TABLE ... ADD COLUMN`).
     feature `delivery_note`/`shipping_instruction` ikut auto-enable untuk
     self-signup, plus backfill untuk akun self-signup yang sudah ada).
 
+20. **`24-item-level-custom-fields.sql`**
+    Perluasan custom fields (file "CUSTOM FIELDS (PRD #U00a733-38).sql")
+    yang tadinya cuma level DOKUMEN (satu nilai / dokumen) — sekarang
+    bisa juga level BARIS/ITEM (mis. "Model Name" beda-beda tiap item).
+    Kolom baru: `custom_field_definitions.is_item_field` (default false,
+    tidak breaking), `invoice_items.custom_fields` &
+    `packing_list_items.custom_fields` (jsonb). RLS TIDAK berubah — sudah
+    ter-cover lewat kepemilikan invoice/packing_list induknya. UI-nya di
+    `js/item-custom-fields.js` (baru, tempel dari luar, tidak mengubah
+    `invoice.js`/`packinglist.js`).
+
+21. **`25-trial-mode.sql`**
+    Ganti model bisnis dari "self-signup pending → admin Activate manual"
+    jadi **14-hari Free Trial**: self-signup sekarang LANGSUNG `active` +
+    PDF tanpa watermark, tapi cuma untuk 14 hari (`profiles.trial_ends_at`,
+    kolom baru). Begitu lewat 14 hari, watermark otomatis muncul lagi
+    (dihitung dari tanggal, bukan ubah `status`) sampai admin klik "Mark
+    as Paid" di `admin.html` (mengosongkan `trial_ends_at` = permanen).
+    Admin-created account TIDAK ikut trial (`trial_ends_at` langsung
+    NULL). Backfill: akun `pending` yang masih ada dari model lama
+    otomatis dikonversi ke `active` + trial 14 hari FRESH mulai hari
+    migration ini dijalankan (bukan dihitung mundur dari signup lamanya)
+    — supaya tidak ada customer existing yang tiba-tiba langsung
+    "kena watermark" begitu migration ini jalan. RLS TIDAK berubah
+    (`is_account_usable()` tetap cuma cek `status <> 'locked'`, sama
+    sekali tidak menyentuh `trial_ends_at`). Butuh langkah 20 sudah
+    dijalankan (urutan nomor file, bukan dependency fungsional).
+
 ---
 
 Catatan: tabel `customers` dan `suppliers` yang sempat ada di draft awal
