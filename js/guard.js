@@ -99,30 +99,38 @@ async function requireFeatureOrGuest(featureKey) {
 }
 
 /**
- * PRD §74 → diganti model 14-hari Free Trial (sql/25-trial-mode.sql).
- * PDF final TANPA watermark untuk:
+ * PRD §74 → diganti model Hybrid Trial: 7 hari ATAU 5 dokumen, mana
+ * yang tercapai duluan (sql/26-hybrid-trial.sql). PDF final TANPA
+ * watermark untuk:
  *   - Developer (bypass total)
- *   - Customer yang trial_ends_at masih di masa depan (masih trial)
- *   - Customer yang trial_ends_at NULL (admin-created, atau sudah upgrade
- *     ke paid lewat tombol "Mark as Paid" di admin.html)
+ *   - Customer yang trial_ends_at NULL (admin-created, atau sudah
+ *     upgrade ke paid lewat tombol "Mark as Paid" di admin.html) --
+ *     TIDAK PERNAH watermark berapa pun dokumennya.
+ *   - Customer yang masih trial DAN belum tembus 7 hari DAN belum
+ *     tembus 5 dokumen.
  * PDF pakai watermark untuk:
  *   - Guest (belum login sama sekali)
  *   - Customer status 'locked'
- *   - Customer trial_ends_at sudah lewat (trial berakhir, belum bayar)
+ *   - Customer trial: SALAH SATU dari trial_ends_at sudah lewat ATAU
+ *     trial_docs_generated >= 5 (gabungan semua jenis dokumen).
  */
+const TRIAL_DOC_LIMIT = 5;
+
 function accountNeedsWatermark(session) {
   if (!session) return true;
   if (session.profile.role === 'developer') return false;
   if (session.profile.status === 'locked') return true;
   const trialEndsAt = session.profile.trial_ends_at;
   if (!trialEndsAt) return false; // paid/lifetime -- tidak pernah watermark
-  return new Date(trialEndsAt) <= new Date(); // watermark cuma kalau trial SUDAH lewat
+  const timeUp = new Date(trialEndsAt) <= new Date();
+  const docsUp = (session.profile.trial_docs_generated || 0) >= TRIAL_DOC_LIMIT;
+  return timeUp || docsUp;
 }
 
 /**
  * Sisa hari trial (bulat ke atas), atau null kalau bukan akun trial
- * (paid/lifetime) atau sudah lewat. Dipakai buat banner info "Trial: N
- * hari lagi" di dashboard/halaman dokumen.
+ * (paid/lifetime) atau waktunya sudah lewat. Dipakai buat banner info
+ * "Trial: N hari lagi" di dashboard/halaman dokumen.
  */
 function trialDaysLeft(session) {
   const trialEndsAt = session?.profile?.trial_ends_at;
@@ -130,6 +138,18 @@ function trialDaysLeft(session) {
   const ms = new Date(trialEndsAt) - new Date();
   if (ms <= 0) return null;
   return Math.ceil(ms / (1000 * 60 * 60 * 24));
+}
+
+/**
+ * Sisa kuota dokumen trial (bisa 0), atau null kalau bukan akun trial
+ * (paid/lifetime). Dipakai bareng trialDaysLeft() untuk banner
+ * "N hari ATAU M dokumen lagi".
+ */
+function trialDocsLeft(session) {
+  const trialEndsAt = session?.profile?.trial_ends_at;
+  if (!trialEndsAt) return null;
+  const used = session?.profile?.trial_docs_generated || 0;
+  return Math.max(0, TRIAL_DOC_LIMIT - used);
 }
 
 /**
@@ -167,9 +187,9 @@ function showActivationModal(opts = {}) {
 
   overlay.innerHTML = `
     <div class="feature-card" style="max-width:420px; width:92%; margin:8vh auto 0; max-height:88vh; overflow-y:auto;">
-      <h3>⏰ Trial 14 Hari Anda Sudah Berakhir</h3>
+      <h3>⏰ Trial Gratis Anda Sudah Berakhir</h3>
       <p style="color:var(--text-muted); font-size:14px; margin:10px 0 14px;">
-        ${opts.justSaved ? 'Dokumen Anda sudah tersimpan. ' : ''}Masa trial gratis 14 hari untuk akun Anda sudah selesai, jadi PDF sekarang otomatis diberi watermark.
+        ${opts.justSaved ? 'Dokumen Anda sudah tersimpan. ' : ''}Masa trial gratis Anda (7 hari atau 5 dokumen, mana yang tercapai duluan) sudah selesai, jadi PDF sekarang otomatis diberi watermark.
       </p>
 
       <div style="background:var(--warning-bg); border-radius:8px; padding:14px; margin-bottom:14px;">

@@ -37,18 +37,20 @@ const FEATURE_CATALOG = [
   document.getElementById('welcome-name').textContent =
     session.profile.full_name || session.profile.email;
 
-  // 14-hari Free Trial (sql/25-trial-mode.sql): kalau trial sudah lewat
-  // & belum upgrade ke Lifetime -> banner + popup otomatis (sekali per
-  // sesi tab). Selagi trial masih jalan, kasih info positif "N hari lagi".
+  // Hybrid Trial (sql/26-hybrid-trial.sql): 7 hari ATAU 5 dokumen, mana
+  // yang tercapai duluan. Kalau salah satu sudah lewat & belum upgrade
+  // ke Lifetime -> banner + popup otomatis (sekali per sesi tab).
+  // Selagi trial masih jalan, kasih info positif "N hari / M dokumen lagi".
   if (!isDev) {
     if (accountNeedsWatermark(session)) {
       document.getElementById('pending-banner').hidden = false;
       showTrialExpiredOnce(session);
     } else {
       const daysLeft = trialDaysLeft(session);
-      if (daysLeft != null) {
+      const docsLeft = trialDocsLeft(session);
+      if (daysLeft != null && docsLeft != null) {
         const el = document.getElementById('trial-info-banner');
-        el.textContent = `🎁 Trial gratis Anda: ${daysLeft} hari lagi. PDF masih tanpa watermark.`;
+        el.textContent = `🎁 Trial gratis Anda: ${daysLeft} hari lagi atau ${docsLeft} dokumen lagi (mana duluan). PDF masih tanpa watermark.`;
         el.hidden = false;
       }
     }

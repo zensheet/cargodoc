@@ -22,7 +22,7 @@ let IS_GUEST = false; // true = belum login (PRD §73 guest mode)
     renderGuestHeader(); // js/guest-auth.js
   } else {
     document.getElementById('user-name').textContent = session.profile.email;
-    // 14-hari Free Trial (sql/25-trial-mode.sql): trial sudah lewat &
+    // Hybrid Trial (sql/26-hybrid-trial.sql): trial sudah lewat &
     // belum upgrade -> banner + popup otomatis (sekali per sesi tab).
     if (accountNeedsWatermark(session)) {
       document.getElementById('pending-warning').hidden = false;
@@ -397,7 +397,7 @@ async function saveAndDownload() {
     guestAuthGate(async () => {
       const saved = await persistSalesOrder(data, 'final');
       const branding = await getBranding();
-      // sql/25-trial-mode.sql: baru signup -> trial 14 hari LANGSUNG aktif,
+      // sql/26-hybrid-trial.sql: baru signup -> trial 7 hari & 5 dokumen LANGSUNG aktif,
       // jadi watermark cuma muncul kalau (jarang terjadi) trial-nya sudah
       // lewat SEBELUM proses signup ini selesai.
       const watermark = accountNeedsWatermark(window.APP_SESSION);

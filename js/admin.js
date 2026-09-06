@@ -87,36 +87,44 @@ async function loadUsers() {
         ${f.feature_name}</label>`;
     }).join('') + `</div>`;
 
-    // sql/25-trial-mode.sql: status cuma 'active'/'locked' -- trial
-    // dihitung murni dari trial_ends_at (bukan dari status). NULL =
-    // paid/lifetime (admin-created atau sudah upgrade). Di masa depan =
-    // masih trial. Di masa lalu = trial habis, watermark aktif.
+    // sql/26-hybrid-trial.sql: status cuma 'active'/'locked' -- trial
+    // dihitung dari KOMBINASI trial_ends_at (7 hari) DAN
+    // trial_docs_generated (5 dokumen, gabungan semua jenis). NULL
+    // trial_ends_at = paid/lifetime (admin-created atau sudah upgrade).
+    // Trial dianggap habis begitu SALAH SATU batas tercapai.
     const trialEndsAt = u.trial_ends_at ? new Date(u.trial_ends_at) : null;
+    const docsUsed = u.trial_docs_generated || 0;
+    const docsLeft = Math.max(0, 5 - docsUsed);
     const isLocked = u.status === 'locked';
     const isPaid = !isLocked && !trialEndsAt;
-    const isTrialActive = !isLocked && trialEndsAt && trialEndsAt > now;
-    const isTrialExpired = !isLocked && trialEndsAt && trialEndsAt <= now;
+    const timeUp = trialEndsAt && trialEndsAt <= now;
+    const docsUp = trialEndsAt && docsUsed >= 5; // cuma relevan kalau masih trial (trial_ends_at not null)
+    const isTrialActive = !isLocked && trialEndsAt && !timeUp && !docsUp;
+    const isTrialExpired = !isLocked && trialEndsAt && (timeUp || docsUp);
 
     let badgeClass, statusLabel;
     if (isLocked) { badgeClass = 'badge-locked'; statusLabel = 'locked'; }
     else if (isPaid) { badgeClass = 'badge-active'; statusLabel = 'active (paid)'; }
     else if (isTrialActive) {
       const daysLeft = Math.ceil((trialEndsAt - now) / 86400000);
-      badgeClass = 'badge-pending'; statusLabel = `trial (${daysLeft}d left)`;
-    } else { badgeClass = 'badge-pending'; statusLabel = 'trial expired'; }
+      badgeClass = 'badge-pending'; statusLabel = `trial (${daysLeft}d / ${docsLeft} docs left)`;
+    } else {
+      const reason = docsUp && !timeUp ? ' (doc limit)' : timeUp && !docsUp ? ' (time limit)' : '';
+      badgeClass = 'badge-pending'; statusLabel = `trial expired${reason}`;
+    }
 
     // Akun trial (aktif ATAU sudah habis) -> tombol "Mark as Paid"
-    // (trial_ends_at dikosongkan = permanen tanpa watermark) + "+14
-    // Days" (perpanjang trial, mis. kalau customer minta lebih waktu
-    // sebelum mutusin bayar) + tetap bisa "Lock". Akun paid -> cuma
-    // "Lock". Akun locked -> "Unlock" (balik ke status 'active', trial
-    // sebelumnya TIDAK di-reset).
+    // (trial_ends_at dikosongkan = permanen tanpa watermark) + "+7
+    // Days" (perpanjang trial DAN reset counter dokumen, mis. kalau
+    // customer minta lebih waktu sebelum mutusin bayar) + tetap bisa
+    // "Lock". Akun paid -> cuma "Lock". Akun locked -> "Unlock" (balik
+    // ke status 'active', trial sebelumnya TIDAK di-reset).
     let actions;
     if (isLocked) {
       actions = `<button class="btn btn-primary btn-sm" onclick="setStatus('${u.id}', 'active')">Unlock</button>`;
     } else if (trialEndsAt) {
       actions = `<button class="btn btn-primary btn-sm" onclick="markAsPaid('${u.id}')">Mark as Paid</button>
-        <button class="btn btn-secondary btn-sm" onclick="extendTrial('${u.id}')">+14 Days</button>
+        <button class="btn btn-secondary btn-sm" onclick="extendTrial('${u.id}')">+7 Days & Reset Docs</button>
         <button class="btn btn-danger btn-sm" onclick="setStatus('${u.id}', 'locked')">Lock</button>`;
     } else {
       actions = `<button class="btn btn-danger btn-sm" onclick="setStatus('${u.id}', 'locked')">Lock</button>`;
@@ -166,14 +174,17 @@ async function markAsPaid(userId) {
   await loadUsers();
 }
 
-// ---------- EXTEND TRIAL +14 DAYS ----------
+// ---------- EXTEND TRIAL +7 DAYS & RESET DOC COUNT ----------
 // Selalu dihitung dari HARI INI (bukan menambah ke trial_ends_at lama),
-// supaya tetap "+14 hari mulai sekarang" walau trial-nya sudah lama habis.
+// supaya tetap "+7 hari mulai sekarang" walau trial-nya sudah lama
+// habis. trial_docs_generated JUGA di-reset ke 0 -- kalau tidak,
+// customer yang sudah mentok 5 dokumen tetap kena watermark walau
+// waktunya baru diperpanjang (dua batas itu independen).
 async function extendTrial(userId) {
-  if (!(await customConfirm('Extend this account\'s trial by 14 more days, starting today?'))) return;
-  const newTrialEnd = new Date(Date.now() + 14 * 86400000).toISOString();
+  if (!(await customConfirm('Extend this account\'s trial by 7 more days and reset its document count, starting today?'))) return;
+  const newTrialEnd = new Date(Date.now() + 7 * 86400000).toISOString();
   const { error } = await supabase
-    .from('profiles').update({ trial_ends_at: newTrialEnd }).eq('id', userId);
+    .from('profiles').update({ trial_ends_at: newTrialEnd, trial_docs_generated: 0 }).eq('id', userId);
   if (error) { alert('Gagal: ' + error.message); return; }
   await loadUsers();
 }

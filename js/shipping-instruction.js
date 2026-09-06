@@ -3,7 +3,7 @@
 // Mengikuti pola persis js/purchase-order.js / js/invoice.js:
 //   - Guest mode: bisa diakses tanpa login (PRD §73/§74, lihat
 //     sql/23-guest-mode-dn-si.sql)
-//   - sql/25-trial-mode.sql: 14-hari trial gratis, watermark kalau lewat
+//   - sql/26-hybrid-trial.sql: trial 7 hari ATAU 5 dokumen, watermark kalau salah satu lewat
 //   - Nomor otomatis SI-{YEAR}-{SEQ}, editable
 //   - Edit existing SI via ?id=<uuid> di URL
 // ============================================
@@ -20,7 +20,7 @@ let IS_GUEST = false; // true = belum login (PRD §73 guest mode)
     renderGuestHeader(); // js/guest-auth.js
   } else {
     document.getElementById('user-name').textContent = session.profile.email;
-    // 14-hari Free Trial (sql/25-trial-mode.sql): trial sudah lewat &
+    // Hybrid Trial (sql/26-hybrid-trial.sql): trial sudah lewat &
     // belum upgrade -> banner + popup otomatis (sekali per sesi tab).
     if (accountNeedsWatermark(session)) {
       document.getElementById('pending-warning').hidden = false;
